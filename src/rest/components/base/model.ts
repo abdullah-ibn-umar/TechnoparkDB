@@ -12,5 +12,5 @@ export default class BaseModel<ModelInterface> {
      */
     read(data: any) {
     }
-    update(data: ModelInterface) {}
+    update(data: any) {}
 }

@@ -1,25 +1,3 @@
-export interface IPost {
-    author: string;
-    created: string;
-    forum: string;
-    id: string;
-    isEdited: boolean;
-    message: string;
-    parent: number;
-    thread: string;
-}
-
-// export interface IPostFull {
-//     author: string;
-//     forum: IForum;
-//     post: IPost;
-//     thread: IThread;
-// }
-
-export interface IPostUpdate {
-    message: string;
-}
-
 export interface Status {
     forum: string;
     post: number;
@@ -28,9 +6,9 @@ export interface Status {
 }
 
 export interface IThread {
-    author: string;
+    author: string|number;
     created: string;
-    forum: string;
+    forum: string|number;
     message: string;
     slug: string;
     title: string;
@@ -39,8 +17,14 @@ export interface IThread {
 }
 
 export interface IThreadUpdate {
+    id: number;
     message: string;
     title: string;
+}
+
+export interface IThreadData {
+    threadId: number;
+    forumId: number;
 }
 
 export interface IGetForumData {

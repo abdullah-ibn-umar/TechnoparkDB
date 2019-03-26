@@ -1,9 +1,9 @@
 import e from 'express';
-import { DBConflictCode } from '../../utils/constants';
+import model from './model';
+import { DBConflictCode } from '../../../utils/constants';
 import { IError, IReturn, IReturnQuery } from '../base/interfaces';
 import { IGetForumData } from '../forum/interface';
 import { IUser } from './interface';
-import userModel from './model';
 
 class UserController {
     create = async (req: e.Request, res: e.Response) => {
@@ -21,11 +21,11 @@ class UserController {
             fullName: profile.fullname
         };
 
-        const rq: IReturnQuery = await userModel.create(user);
+        const rq: IReturnQuery = await model.create(user);
 
         if (rq.isError) {
             if (+rq.code === DBConflictCode) {
-                const confRes: IReturnQuery = await userModel.getConflicted(user);
+                const confRes: IReturnQuery = await model.getConflicted(user);
                 if (confRes.isError) {
                     res.status(400).json(<IError>{ message: confRes.message });
                     return;
@@ -48,7 +48,7 @@ class UserController {
             return;
         }
 
-        const rq: IReturnQuery = await userModel.getOne(r.data);
+        const rq: IReturnQuery = await model.getOne(r.data);
         if (rq.isError) {
             res.status(400).json(<IError>{ message: rq.message});
             return;
@@ -77,10 +77,10 @@ class UserController {
             fullName: profile.fullname
         };
 
-        const rq: IReturnQuery = await userModel.update(user);
+        const rq: IReturnQuery = await model.update(user);
         if (rq.isError) {
             if (+rq.code === DBConflictCode) {
-                const confRes: IReturnQuery = await userModel.getConflicted(user);
+                const confRes: IReturnQuery = await model.getConflicted(user);
                 if (confRes.isError) {
                     res.status(400).json(<IError>{ message: confRes.message });
                     return;
@@ -97,13 +97,30 @@ class UserController {
     };
 
     forumUsers = async (req: e.Request, res: e.Response, data: IGetForumData) => {
-        const rq = await userModel.forumUsers(data);
+        const rq = await model.forumUsers(data);
         if (rq.isError) {
             res.status(400).json(<IError>{ message: rq.message });
             return;
         }
 
         res.status(200).json(rq.data.rows);
+    };
+
+    getUser = async (req: e.Request, res: e.Response, nickname: string) => {
+        const user = await model.getOne(nickname, false);
+        if (user.isError) {
+            res.status(400).json(<IError>{ message: user.message });
+            return <IReturn<number>>{ error: true };
+        }
+        if (!user.data.rowCount) {
+            res.status(404).json(<IError>{ message: `User ${nickname} not found` });
+            return <IReturn<number>>{ error: true };
+        }
+
+        return <IReturn<number>> {
+            data: user.data.rows[0]['UID'],
+            error: false
+        };
     };
 
     private getNickname(req: e.Request) {

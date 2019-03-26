@@ -1,9 +1,8 @@
 import db from '../../../config/database';
-import BaseModel from '../base/model';
-
+import BaseModel   from '../base/model';
 import { IQuery }  from '../base/interfaces';
-import { IThread } from './interface';
 import { IGetForumData } from '../forum/interface';
+import { IThread, IThreadUpdate } from './interface';
 
 class ThreadModel implements BaseModel<IThread> {
     async create(thread: IThread) {
@@ -18,7 +17,14 @@ class ThreadModel implements BaseModel<IThread> {
         return db.sendQuery(query);
     }
 
-    async update(thread: IThread) {
+    async update(thread: IThreadUpdate) {
+        const query: IQuery = {
+            name: 'update_thread',
+            text: `UPDATE thread SET message = $1, title = $2 
+                   WHERE "TID" = $3`,
+            values: [thread.message, thread.title, thread.id]
+        };
+        return db.sendQuery(query);
     }
 
     async read(thread: IThread) {
@@ -49,7 +55,7 @@ class ThreadModel implements BaseModel<IThread> {
         return db.sendQuery(query);
     }
 
-    async getOne(slug: string, full: boolean = true) {
+    async getOne(data: string|number, full: boolean = true) {
         const query: IQuery = {
             name: 'get_one_thread',
             text: `SELECT ${ full ? 
@@ -62,10 +68,11 @@ class ThreadModel implements BaseModel<IThread> {
                     t.title,
                     votes FROM thread t 
                     INNER JOIN users u ON u."UID" = t."AuthorID"
-                    INNER JOIN forum f ON f."FID" = t."ForumID"`: 
-                    `t."FID" FROM thread t`
-                } WHERE t.slug = $1`,
-            values: [slug]
+                    INNER JOIN forum f ON f."FID" = t."ForumID"`
+                    : `t."TID" FROM thread t`
+                } 
+                WHERE ${typeof data === 'string' ? 't.slug': 't."TID"'} = $1 `,
+            values: [data]
         };
         return db.sendQuery(query);
     }
