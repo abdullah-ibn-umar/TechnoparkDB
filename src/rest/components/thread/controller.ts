@@ -3,6 +3,7 @@ import model from './model';
 import { DBConflictCode } from '../../../utils/constants';
 import postController from '../post/controller';
 import userController from '../user/controller';
+import voteController from '../vote/controller';
 import { IThread, IThreadData, IThreadUpdate } from './interface';
 import { IForum, IGetForumData } from '../forum/interface';
 import { IError, IReturn, IReturnQuery } from '../base/interfaces';
@@ -105,6 +106,12 @@ class ThreadController {
             forum: r.data['forum']
         };
         await postController.threadPosts(req, res, data);
+    };
+
+    vote = async (req: e.Request, res: e.Response) => {
+        const r: IReturn<any> = await this.getIdentifier(req, res);
+        if (r.error) return;
+        await voteController.create(req, res, r.data);
     };
 
     private getIdentifier = async (req: e.Request, res: e.Response) => {

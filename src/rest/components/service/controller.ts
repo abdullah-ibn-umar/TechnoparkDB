@@ -21,7 +21,13 @@ class ServiceController {
     };
 
     clear = async (req: e.Request, res: e.Response) => {
+        const rq = await model.truncateTables();
+        if (rq.isError) {
+            res.status(400).json(<IError>{ message: rq.message });
+            return;
+        }
 
+        res.json('Clear successfully finished!!!')
     };
 }
 

@@ -55,11 +55,11 @@ class ThreadModel {
         const query: IQuery = {
             name: 'get_one_thread',
             text: `SELECT ${ full ? 
-                    `"TID" as id, 
-                    u.nickname as author, 
-                    created, 
-                    f."FID" as forum_id,
+                    `u.nickname as author,
+                    created,
                     f.slug as forum,
+                    f."FID" as forum_id,
+                    "TID" as id,   
                     message,
                     t.slug,
                     t.title,

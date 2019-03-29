@@ -14,6 +14,17 @@ class ServiceModel {
         };
         return db.sendQuery(query);
     }
+
+    async truncateTables() {
+        const query: IQuery = {
+            name: 'clear_tables',
+            text: `
+                TRUNCATE TABLE users, post, thread, forum
+            `,
+            values: []
+        };
+        return db.sendQuery(query);
+    }
 }
 
 export default new ServiceModel();
