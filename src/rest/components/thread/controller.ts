@@ -49,9 +49,8 @@ class ThreadController {
 
     details = async (req: e.Request, res: e.Response) => {
         const r: IReturn<any[]> = await this.getIdentifier(req, res);
-        if (!r.error) {
-            res.json(r.data);
-        }
+        if (r.error) return;
+        res.json(r.data);
     };
 
     update = async (req: e.Request, res: e.Response) => {
@@ -88,19 +87,30 @@ class ThreadController {
 
     createPosts = async (req: e.Request, res: e.Response) => {
         const r: IReturn<any> = await this.getIdentifier(req, res);
-        if (!r.error) return;
-        
+        if (r.error) return;
+
         const data: IThreadData = {
-            threadId: r.data[0]["id"],
-            forumId: r.data[0]["forum"]
+            threadId: r.data['id'],
+            forum: r.data['forum_id']
         };
         await postController.create(req, res, data);
+    };
+
+    getPosts = async (req: e.Request, res: e.Response) => {
+        const r: IReturn<any> = await this.getIdentifier(req, res);
+        if (r.error) return;
+
+        const data: IThreadData = {
+            threadId: r.data['id'],
+            forum: r.data['forum']
+        };
+        await postController.threadPosts(req, res, data);
     };
 
     private getIdentifier = async (req: e.Request, res: e.Response) => {
         let identifier = req.params.slug_or_id;
         if (!isNaN(identifier)) identifier = +identifier;
-        let thread = await model.getOne(identifier);
+        const thread = await model.getOne(identifier);
 
         if (thread.isError) {
             res.status(400).json(<IError>{ message: thread.message });

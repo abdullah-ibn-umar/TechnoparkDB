@@ -1,9 +1,8 @@
 import db from '../../../config/database';
-import BaseModel from '../base/model';
 import { IQuery } from '../base/interfaces';
 import { IForum } from './interface';
 
-class ForumModel implements BaseModel<IForum> {
+class ForumModel {
     async create(forum: IForum) {
         const query: IQuery = {
             name: 'create_forum',
@@ -12,12 +11,6 @@ class ForumModel implements BaseModel<IForum> {
         };
 
         return db.sendQuery(query);
-    }
-
-    async update(forum: IForum) {
-    }
-
-    async read(forum: IForum) {
     }
 
     async getOne(slug: string, full: boolean = true) {

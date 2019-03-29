@@ -24,14 +24,7 @@ export interface IThreadUpdate {
 
 export interface IThreadData {
     threadId: number;
-    forumId: number;
-}
-
-export interface IGetForumData {
-    slug: string;
-    limit: number;
-    since: string;
-    desc: boolean;
+    forum: number|string;
 }
 
 export interface IVote {

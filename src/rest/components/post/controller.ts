@@ -1,6 +1,6 @@
 import e from 'express';
 import model  from './model';
-import { IPost }  from './interface';
+import { IPost, IPostFilter, IPostUpdate } from './interface';
 import { IError } from '../base/interfaces';
 import { IThreadData } from '../thread/interface';
 
@@ -13,7 +13,7 @@ class PostController {
                 author: p.author,
                 message: p.message,
                 parent: p.parent | 0,
-                forum: data.forumId,
+                forum: data.forum,
                 thread: data.threadId,
                 isEdited: false
             };
@@ -39,6 +39,62 @@ class PostController {
         });
 
         res.status(201).json(posts);
+    };
+
+    threadPosts = async (req: e.Request, res: e.Response, data: IThreadData) => {
+        const filter: IPostFilter = {
+            threadId: data.threadId,
+            forum: data.forum.toString(),
+            limit: req.query.limit,
+            since: req.query.since,
+            sort: req.query.sort,
+            desc: JSON.parse(req.query.desc)
+        };
+
+        const rq = await model.getThreadPosts(filter);
+        if (rq.isError) {
+            res.status(400).json(<IError>{ message: rq.message });
+            return;
+        }
+
+        res.json(rq.data.rows);
+    };
+
+    details = async (req: e.Request, res: e.Response) => {
+        const id = req.params.id;
+
+        const rq = await model.fullData(id);
+        if (rq.isError) {
+            res.status(400).json(<IError>{ message: rq.message });
+            return;
+        }
+
+        if (!rq.data.rowCount) {
+            res.status(404).json(<IError>{ message: `Post by id ${id} not found` });
+            return;
+        }
+
+        res.json(rq.data.rows[0].post);
+    };
+
+    update = async (req: e.Request, res: e.Response) => {
+        const post: IPostUpdate = {
+            id: req.params.id,
+            message: req.body.message
+        };
+
+        const rq = await model.update(post);
+        if (rq.isError) {
+            res.status(400).json(<IError>{ message: rq.message });
+            return;
+        }
+
+        if (!rq.data.rowCount) {
+            res.status(404).json(<IError>{ message: `Post by id ${post.id} not found` });
+            return;
+        }
+
+        res.json(rq.data.rows[0]);
     };
 }
 

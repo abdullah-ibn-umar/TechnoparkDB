@@ -9,13 +9,16 @@ export interface IPost {
     thread: string|number;
 }
 
-// export interface IPostFull {
-//     author: string;
-//     forum: IForum;
-//     post: IPost;
-//     thread: IThread;
-// }
+export interface IPostFilter {
+    threadId: number;
+    forum: string;
+    limit: number;
+    since: number;
+    sort: string;
+    desc: boolean;
+}
 
 export interface IPostUpdate {
+    id: number;
     message: string;
 }

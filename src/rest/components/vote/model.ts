@@ -1,9 +1,8 @@
 import db from '../../../config/database';
 import {IQuery} from '../base/interfaces';
-import BaseModel from '../base/model';
 import Interface from './interface';
 
-export default class UserModel implements BaseModel<Interface> {
+export default class UserModel{
     constructor() {}
 
     create(user: Interface) {

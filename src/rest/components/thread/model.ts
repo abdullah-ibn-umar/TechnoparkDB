@@ -1,10 +1,9 @@
 import db from '../../../config/database';
-import BaseModel   from '../base/model';
 import { IQuery }  from '../base/interfaces';
 import { IGetForumData } from '../forum/interface';
 import { IThread, IThreadUpdate } from './interface';
 
-class ThreadModel implements BaseModel<IThread> {
+class ThreadModel {
     async create(thread: IThread) {
         const query: IQuery = {
             name: 'create_forum',
@@ -27,16 +26,13 @@ class ThreadModel implements BaseModel<IThread> {
         return db.sendQuery(query);
     }
 
-    async read(thread: IThread) {
-    }
-
     async forumThreads(thread: IGetForumData) {
         const query: IQuery = {
             name: '',
             text: `SELECT
                     "TID" as id, 
                     u.nickname as author, 
-                    created, 
+                    created,                    
                     f.slug as forum,
                     message,
                     t.slug,
@@ -62,6 +58,7 @@ class ThreadModel implements BaseModel<IThread> {
                     `"TID" as id, 
                     u.nickname as author, 
                     created, 
+                    f."FID" as forum_id,
                     f.slug as forum,
                     message,
                     t.slug,

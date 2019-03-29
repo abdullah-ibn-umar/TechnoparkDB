@@ -3,7 +3,7 @@ import controller from './controller';
 
 const router = express.Router();
 
-router.route('/:id/details')
-    .get(controller.details)
-    .post(controller.update);
+router.post('/status', controller.status);
+router.post('/clear', controller.clear);
+
 export default router;

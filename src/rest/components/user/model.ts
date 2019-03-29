@@ -1,10 +1,9 @@
-import db         from '../../../config/database';
-import BaseModel  from '../base/model';
+import db from '../../../config/database';
 import { IQuery } from '../base/interfaces';
 import { IGetForumData } from '../forum/interface';
 import { IUser }  from './interface';
 
-class UserModel implements BaseModel<IUser> {
+class UserModel {
     async create(user: IUser) {
         const query: IQuery = {
             name: 'create_user',
@@ -22,15 +21,6 @@ class UserModel implements BaseModel<IUser> {
             values: Object.values(user)
         };
 
-        return db.sendQuery(query);
-    }
-
-    async read(data: IUser) {
-        const query: IQuery = {
-            name: 'get_users',
-            text: 'SELECT about, email, fullname, nickname FROM users LIMIT 50',
-            values: Object.values(data)
-        };
         return db.sendQuery(query);
     }
 
