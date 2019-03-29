@@ -7,20 +7,21 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-class UserModel {
-    constructor() { }
-    create(user) {
-    }
-    delete(id) {
-    }
-    update(data) {
+const database_1 = __importDefault(require("../../../config/database"));
+class VoteModel {
+    createOrUpdate(vote) {
         return __awaiter(this, void 0, void 0, function* () {
-        });
-    }
-    read(data) {
-        return __awaiter(this, void 0, void 0, function* () {
+            const query = {
+                name: 'update_vote',
+                text: `SELECT update_vote($1, $2, $3);`,
+                values: [vote.nickname, vote.threadId, vote.voice]
+            };
+            return database_1.default.sendQuery(query);
         });
     }
 }
-exports.default = UserModel;
+exports.default = new VoteModel();

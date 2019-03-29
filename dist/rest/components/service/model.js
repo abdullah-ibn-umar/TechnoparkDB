@@ -7,20 +7,37 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-class UserModel {
-    constructor() { }
-    create(user) {
-    }
-    delete(id) {
-    }
-    update(data) {
+const database_1 = __importDefault(require("../../../config/database"));
+class ServiceModel {
+    getTablesStatus() {
         return __awaiter(this, void 0, void 0, function* () {
+            const query = {
+                name: 'get_tables_status',
+                text: `
+                SELECT relname as table, n_live_tup as rowcount
+                FROM pg_stat_user_tables 
+                ORDER BY relname ASC
+            `,
+                values: []
+            };
+            return database_1.default.sendQuery(query);
         });
     }
-    read(data) {
+    truncateTables() {
         return __awaiter(this, void 0, void 0, function* () {
+            const query = {
+                name: 'clear_tables',
+                text: `
+                TRUNCATE TABLE users, post, thread, forum
+            `,
+                values: []
+            };
+            return database_1.default.sendQuery(query);
         });
     }
 }
-exports.default = UserModel;
+exports.default = new ServiceModel();

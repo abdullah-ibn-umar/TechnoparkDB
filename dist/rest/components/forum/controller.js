@@ -1,5 +1,5 @@
 "use strict";
-let __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
         function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
@@ -7,33 +7,25 @@ let __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-let __importDefault = (this && this.__importDefault) || function (mod) {
+var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const constants_1 = require("../../utils/constants");
 const model_1 = __importDefault(require("./model"));
-const model_2 = __importDefault(require("../user/model"));
+const constants_1 = require("../../../utils/constants");
 const controller_1 = __importDefault(require("../user/controller"));
 const controller_2 = __importDefault(require("../thread/controller"));
 class ForumController {
     constructor() {
         this.create = (req, res) => __awaiter(this, void 0, void 0, function* () {
-            const nickname = req.body.user;
-            const user = yield model_2.default.getOne(nickname, false);
-            if (user.isError) {
-                res.status(400).json({ message: user.message });
+            const author = req.body.nickname;
+            const user = yield controller_1.default.getUser(req, res, author);
+            if (user.error)
                 return;
-            }
-            if (!user.data.rowCount) {
-                res.status(404).json({ message: `User ${nickname} not found` });
-                return;
-            }
-            const userId = user.data.rows[0]['UID'];
             const forum = {
                 slug: req.body.slug,
                 title: req.body.title,
-                user: userId,
+                user: user.data,
                 posts: 0,
                 threads: 0
             };
@@ -51,6 +43,7 @@ class ForumController {
                 res.status(400).json({ message: rq.message });
                 return;
             }
+            forum.user = author;
             res.status(201).json(forum);
         });
         this.details = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -98,6 +91,30 @@ class ForumController {
             else {
                 yield controller_1.default.forumUsers(req, res, data);
             }
+        });
+        this.createThread = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            const r = this.getSlug(req);
+            if (r.error) {
+                res.status(400).json({ message: 'Slug is not given' });
+                return;
+            }
+            const slug = r.data;
+            const rf = yield model_1.default.getOne(slug, false);
+            if (rf.isError) {
+                res.status(400).json({ message: rf.message });
+                return;
+            }
+            if (!rf.data.rowCount) {
+                res.status(404).json({ message: `Forum ${slug} not found` });
+                return;
+            }
+            const forum = {
+                id: rf.data.rows[0]['FID'],
+                slug,
+                title: '',
+                user: ''
+            };
+            yield controller_2.default.create(req, res, forum);
         });
     }
     getSlug(req) {

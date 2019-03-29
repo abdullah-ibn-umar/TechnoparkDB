@@ -23,14 +23,6 @@ class ForumModel {
             return database_1.default.sendQuery(query);
         });
     }
-    update(forum) {
-        return __awaiter(this, void 0, void 0, function* () {
-        });
-    }
-    read(forum) {
-        return __awaiter(this, void 0, void 0, function* () {
-        });
-    }
     getOne(slug, full = true) {
         return __awaiter(this, void 0, void 0, function* () {
             const query = {

@@ -11,8 +11,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const constants_1 = require("../../utils/constants");
 const model_1 = __importDefault(require("./model"));
+const constants_1 = require("../../../utils/constants");
 class UserController {
     constructor() {
         this.create = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -97,6 +97,21 @@ class UserController {
                 return;
             }
             res.status(200).json(rq.data.rows);
+        });
+        this.getUser = (req, res, nickname) => __awaiter(this, void 0, void 0, function* () {
+            const user = yield model_1.default.getOne(nickname, false);
+            if (user.isError) {
+                res.status(400).json({ message: user.message });
+                return { error: true };
+            }
+            if (!user.data.rowCount) {
+                res.status(404).json({ message: `User ${nickname} not found` });
+                return { error: true };
+            }
+            return {
+                data: user.data.rows[0]['UID'],
+                error: false
+            };
         });
     }
     getNickname(req) {

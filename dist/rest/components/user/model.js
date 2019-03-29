@@ -33,16 +33,6 @@ class UserModel {
             return database_1.default.sendQuery(query);
         });
     }
-    read(data) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const query = {
-                name: 'get_users',
-                text: 'SELECT about, email, fullname, nickname FROM users LIMIT 50',
-                values: Object.values(data)
-            };
-            return database_1.default.sendQuery(query);
-        });
-    }
     forumUsers(data) {
         return __awaiter(this, void 0, void 0, function* () {
             const query = {

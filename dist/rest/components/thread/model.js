@@ -27,10 +27,13 @@ class ThreadModel {
     }
     update(thread) {
         return __awaiter(this, void 0, void 0, function* () {
-        });
-    }
-    read(thread) {
-        return __awaiter(this, void 0, void 0, function* () {
+            const query = {
+                name: 'update_thread',
+                text: `UPDATE thread SET message = $1, title = $2 
+                   WHERE "TID" = $3`,
+                values: [thread.message, thread.title, thread.id]
+            };
+            return database_1.default.sendQuery(query);
         });
     }
     forumThreads(thread) {
@@ -40,7 +43,7 @@ class ThreadModel {
                 text: `SELECT
                     "TID" as id, 
                     u.nickname as author, 
-                    created, 
+                    created,                    
                     f.slug as forum,
                     message,
                     t.slug,
@@ -58,23 +61,25 @@ class ThreadModel {
             return database_1.default.sendQuery(query);
         });
     }
-    getOne(slug, full = true) {
+    getOne(data, full = true) {
         return __awaiter(this, void 0, void 0, function* () {
             const query = {
                 name: 'get_one_thread',
                 text: `SELECT ${full ?
-                    `"TID" as id, 
-                    u.nickname as author, 
-                    created, 
+                    `u.nickname as author,
+                    created,
                     f.slug as forum,
+                    f."FID" as forum_id,
+                    "TID" as id,   
                     message,
                     t.slug,
                     t.title,
                     votes FROM thread t 
                     INNER JOIN users u ON u."UID" = t."AuthorID"
-                    INNER JOIN forum f ON f."FID" = t."ForumID"` :
-                    `t."FID" FROM thread t`} WHERE t.slug = $1`,
-                values: [slug]
+                    INNER JOIN forum f ON f."FID" = t."ForumID"`
+                    : `t."TID" FROM thread t`} 
+                WHERE ${typeof data === 'string' ? 't.slug' : 't."TID"'} = $1 `,
+                values: [data]
             };
             return database_1.default.sendQuery(query);
         });
