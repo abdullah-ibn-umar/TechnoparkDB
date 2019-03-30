@@ -17,8 +17,8 @@ class UserController {
         const user: IUser = {
             about: profile.about,
             email: profile.email,
-            nickname: r.data,
-            fullName: profile.fullname
+            fullname: profile.fullname,
+            nickname: r.data
         };
 
         const rq: IReturnQuery = await model.create(user);
@@ -73,26 +73,29 @@ class UserController {
         const user: IUser = {
             about: profile.about,
             email: profile.email,
-            nickname: r.data,
-            fullName: profile.fullname
+            fullname: profile.fullname,
+            nickname: r.data
         };
 
         const rq: IReturnQuery = await model.update(user);
         if (rq.isError) {
             if (+rq.code === DBConflictCode) {
-                const confRes: IReturnQuery = await model.getConflicted(user);
-                if (confRes.isError) {
-                    res.status(400).json(<IError>{ message: confRes.message });
-                    return;
-                }
-
-                res.status(409).json(confRes.data.rows);
+                res.status(409).json(<IError>{ message: `This email is already registered by user` });
                 return;
             }
             res.status(400).json(<IError>{ message: rq.message });
             return;
         }
 
+        if (!rq.data.rowCount) {
+            res.status(404).json(<IError>{ message: `User ${user.nickname} not found` });
+            return;
+        }
+
+        const _user = rq.data.rows[0];
+        user.about = _user.about;
+        user.fullname = _user.fullname;
+        user.email = _user.email;
         res.status(200).json(user);
     };
 
@@ -102,7 +105,6 @@ class UserController {
             res.status(400).json(<IError>{ message: rq.message });
             return;
         }
-
         res.status(200).json(rq.data.rows);
     };
 
@@ -110,15 +112,15 @@ class UserController {
         const user = await model.getOne(nickname, false);
         if (user.isError) {
             res.status(400).json(<IError>{ message: user.message });
-            return <IReturn<number>>{ error: true };
+            return <IReturn<any>>{ error: true };
         }
         if (!user.data.rowCount) {
             res.status(404).json(<IError>{ message: `User ${nickname} not found` });
-            return <IReturn<number>>{ error: true };
+            return <IReturn<any>>{ error: true };
         }
 
-        return <IReturn<number>> {
-            data: user.data.rows[0]['UID'],
+        return <IReturn<any>> {
+            data: user.data.rows[0],
             error: false
         };
     };

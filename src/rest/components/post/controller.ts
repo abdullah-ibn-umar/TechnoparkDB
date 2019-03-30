@@ -8,34 +8,37 @@ class PostController {
     create = async (req: e.Request, res: e.Response, data: IThreadData) => {
         let posts: IPost[] = [];
         const _posts: IPost[] = req.body;
+
         _posts.forEach((p: IPost) => {
             const post: IPost = {
                 author: p.author,
                 message: p.message,
-                parent: p.parent | 0,
-                forum: data.forum,
-                thread: data.threadId,
-                isEdited: false
+                forum: data.forumId,
+                parent: p.parent,
+                thread: data.threadId
             };
             posts.push(post);
         });
 
         if (!posts.length) {
-            res.status(400).json(<IError>{ message: 'Posts are empty' });
+            res.status(201).json([]);
             return;
         }
 
         const rq = await model.insertSeveral(posts);
         if (rq.isError) {
-            res.status(400).json(<IError>{ message: rq.message });
+            if (rq.message.includes('AuthorID')) {
+                res.status(404).json(<IError>{ message: `Author not found` });
+            } else {
+                res.status(400).json(<IError>{ message: rq.message });
+            }
             return;
         }
 
         rq.data.rows.forEach((p, i) => {
             posts[i].created = p.created;
             posts[i].id = p.id;
-            posts[i].forum = _posts[i].forum;
-            posts[i].thread = _posts[i].thread;
+            posts[i].forum = data.forum;
         });
 
         res.status(201).json(posts);
@@ -48,7 +51,7 @@ class PostController {
             limit: req.query.limit,
             since: req.query.since,
             sort: req.query.sort,
-            desc: JSON.parse(req.query.desc)
+            desc: req.query.desc ? JSON.parse(req.query.desc): req.query.desc
         };
 
         const rq = await model.getThreadPosts(filter);
@@ -62,6 +65,7 @@ class PostController {
 
     details = async (req: e.Request, res: e.Response) => {
         const id = req.params.id;
+        const related = req.query.related || '';
 
         const rq = await model.fullData(id);
         if (rq.isError) {
@@ -74,7 +78,12 @@ class PostController {
             return;
         }
 
-        res.json(rq.data.rows[0].post);
+        const postFull = rq.data.rows[0].post;
+        if (!related.includes('user')) delete postFull['author'];
+        if (!related.includes('forum')) delete postFull['forum'];
+        if (!related.includes('thread')) delete postFull['thread'];
+
+        res.json(postFull);
     };
 
     update = async (req: e.Request, res: e.Response) => {
@@ -94,7 +103,10 @@ class PostController {
             return;
         }
 
-        res.json(rq.data.rows[0]);
+        const upPost = rq.data.rows[0];
+        if (!upPost.parent) delete upPost['parent'];
+        if (!upPost.isEdited) delete upPost['isEdited'];
+        res.json(upPost);
     };
 }
 

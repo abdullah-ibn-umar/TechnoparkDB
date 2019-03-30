@@ -10,14 +10,7 @@ class ServiceController {
             return;
         }
 
-        const result: {[k: string]: any} = {};
-        rq.data.rows.forEach(table => {
-            const val = Object.values(table);
-            // @ts-ignore
-            result[val[0]] = +val[1];
-        });
-
-        res.json(result);
+        res.json(rq.data.rows[0].status);
     };
 
     clear = async (req: e.Request, res: e.Response) => {

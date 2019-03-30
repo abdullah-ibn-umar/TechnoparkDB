@@ -17,5 +17,6 @@ export interface IThreadUpdate {
 
 export interface IThreadData {
     threadId: number;
-    forum: number|string;
+    forumId: number;
+    forum: string;
 }

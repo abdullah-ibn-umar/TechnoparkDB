@@ -16,11 +16,11 @@ class ThreadController {
 
         const forumId = forum.id || 0;
         const thread: IThread = {
-            author: user.data,
+            author: user.data['UID'],
             created: req.body.created,
             forum: forumId,
             message: req.body.message,
-            slug: req.body.slug || '',
+            slug: req.body.slug,
             title: req.body.title,
             votes: 0
         };
@@ -44,7 +44,6 @@ class ThreadController {
         thread.id = rq.data.rows[0]['TID'];
         thread.forum = forum.slug;
         thread.author = author;
-
         res.status(201).json(thread);
     };
 
@@ -71,8 +70,8 @@ class ThreadController {
             return;
         }
 
-        thread.message = threadUpdate.message;
-        thread.title = threadUpdate.title;
+        thread.message = rq.data.rows[0]['message'];
+        thread.title = rq.data.rows[0]['title'];
         res.json(thread);
     };
 
@@ -92,7 +91,8 @@ class ThreadController {
 
         const data: IThreadData = {
             threadId: r.data['id'],
-            forum: r.data['forum_id']
+            forumId: r.data['forum_id'],
+            forum: r.data['forum']
         };
         await postController.create(req, res, data);
     };
@@ -103,7 +103,8 @@ class ThreadController {
 
         const data: IThreadData = {
             threadId: r.data['id'],
-            forum: r.data['forum']
+            forum: r.data['forum'],
+            forumId: r.data['forum_id']
         };
         await postController.threadPosts(req, res, data);
     };

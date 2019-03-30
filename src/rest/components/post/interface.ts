@@ -3,9 +3,9 @@ export interface IPost {
     created?: string;
     forum: string|number;
     id?: string;
-    isEdited: boolean;
+    isEdited?: boolean;
     message: string;
-    parent: number;
+    parent?: number;
     thread: string|number;
 }
 

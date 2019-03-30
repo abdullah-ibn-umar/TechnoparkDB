@@ -7,7 +7,7 @@ class UserModel {
     async create(user: IUser) {
         const query: IQuery = {
             name: 'create_user',
-            text: 'INSERT INTO users(about, email, nickname, fullname) VALUES ($1, $2, $3, $4)',
+            text: 'INSERT INTO "user"(about, email, fullname, nickname) VALUES ($1, $2, $3, $4)',
             values: Object.values(user)
         };
 
@@ -16,8 +16,15 @@ class UserModel {
 
     async update(user: IUser) {
         const query: IQuery = {
-            name: 'create_user',
-            text: 'UPDATE users SET about=$1, email=$2, fullname=$4 WHERE nickname = $3',
+            name: 'update_user',
+            text: `
+                UPDATE "user" SET 
+                    about= COALESCE($1, about), 
+                    email= COALESCE($2, email), 
+                    fullname= COALESCE($3, fullname) 
+                WHERE nickname = $4 RETURNING *
+                
+            `,
             values: Object.values(user)
         };
 
@@ -25,34 +32,42 @@ class UserModel {
     }
 
     async forumUsers(data: IGetForumData) {
+        let sinceExpr = '';
+        if (data.since) {
+            sinceExpr =  data.desc
+                ? `AND nickname < '${data.since}' COLLATE "C"`
+                : `AND nickname > '${data.since}' COLLATE "C"`;
+        }
+
         const query: IQuery = {
-            name: 'get_users',
+            name: '',
             text: `
                 SELECT  about, email, fullname, nickname
-                FROM users, forum 
+                FROM "user" u, forum 
                 WHERE forum.slug = $1
-                AND users."UID" > $2
+                ${sinceExpr}
                 AND (
-                    users."UID" in (
-                        SELECT "AuthorID" from post where "AuthorID" = users."UID"
+                    u."UID" in (
+                        SELECT "AuthorID" FROM post WHERE "ForumID" = forum."FID"
                     )
                     OR
-                    users."UID" in (
-                        SELECT "AuthorID" from thread where "AuthorID" = users."UID"
+                    u."UID" in (
+                        SELECT "AuthorID" FROM thread WHERE "ForumID" = forum."FID"
                     )
                 )
-                ORDER BY nickname ${data.desc ? 'DESC' : 'ASC'}
-                LIMIT $3
+                ORDER BY nickname COLLATE "C" ${data.desc ? 'DESC' : 'ASC'}
+                ${data.limit ? `LIMIT ${data.limit}`: ''}
             `,
-            values: [data.slug, data.since, data.limit]
+            values: [data.slug]
         };
         return db.sendQuery(query);
     }
 
     async getOne(nickname: string, full: boolean = true) {
         const query: IQuery = {
-            name: 'get_one_user',
-            text: `SELECT ${full ? 'about, email, fullname': '"UID"'} FROM users WHERE nickname = $1`,
+            name: `get_one_user_${full ? '1': '2'}`,
+            text: `SELECT ${full ? 'about, email, fullname, nickname': '"UID", nickname'} 
+                    FROM "user" WHERE nickname = $1`,
             values: [nickname]
         };
         return db.sendQuery(query);
@@ -61,7 +76,7 @@ class UserModel {
     async getConflicted(data: IUser) {
         const query: IQuery = {
             name: 'get_conflicted_user',
-            text: 'SELECT about, email, fullname, nickname FROM users WHERE nickname = $1 OR email = $2',
+            text: 'SELECT about, email, fullname, nickname FROM "user" WHERE nickname = $1 OR email = $2',
             values: [data.nickname, data.email]
         };
         return db.sendQuery(query);

@@ -6,7 +6,8 @@ class ForumModel {
     async create(forum: IForum) {
         const query: IQuery = {
             name: 'create_forum',
-            text: 'INSERT INTO forum ("UID", slug, title) VALUES ($1, $2, $3)',
+            text: `INSERT INTO forum ("UID", slug, title) VALUES ($1, $2, $3)
+                    `,
             values: [forum.user, forum.slug, forum.title]
         };
 
@@ -15,9 +16,9 @@ class ForumModel {
 
     async getOne(slug: string, full: boolean = true) {
         const query: IQuery = {
-            name: 'get_one_forum',
-            text: `SELECT ${full ? 'posts, slug, threads, title, nickname as user': '"FID"'} FROM forum 
-                   ${full ? 'INNER JOIN users ON forum."UID" = users."UID"': ''} 
+            name: `get_one_forum_${full ? '1': '2'}`,
+            text: `SELECT ${full ? 'posts, slug, threads, title, nickname as user': '"FID", slug'} FROM forum 
+                   ${full ? 'INNER JOIN "user" u ON forum."UID" = u."UID"': ''} 
                    WHERE slug = $1`,
             values: [slug]
         };
