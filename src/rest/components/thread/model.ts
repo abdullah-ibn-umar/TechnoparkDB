@@ -30,9 +30,7 @@ class ThreadModel {
     async forumThreads(thread: IGetForumData) {
         let sinceExpr = '';
         if (thread.since) {
-            sinceExpr = thread.desc
-                ? `AND created <= '${thread.since}'`
-                : `AND created >= '${thread.since}'`;
+            sinceExpr = `AND created ${thread.desc ? '<=': '>='} '${thread.since}'`;
         }
 
         const query: IQuery = {

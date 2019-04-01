@@ -22,8 +22,8 @@ class UserModel {
                     about= COALESCE($1, about), 
                     email= COALESCE($2, email), 
                     fullname= COALESCE($3, fullname) 
-                WHERE nickname = $4 RETURNING *
-                
+                WHERE nickname = $4 
+                RETURNING *  
             `,
             values: Object.values(user)
         };
@@ -34,9 +34,7 @@ class UserModel {
     async forumUsers(data: IGetForumData) {
         let sinceExpr = '';
         if (data.since) {
-            sinceExpr =  data.desc
-                ? `AND nickname < '${data.since}' COLLATE "C"`
-                : `AND nickname > '${data.since}' COLLATE "C"`;
+            sinceExpr = `AND nickname ${data.desc ? '<': '>'} '${data.since}' COLLATE "C"`;
         }
 
         const query: IQuery = {

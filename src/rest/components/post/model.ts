@@ -9,9 +9,12 @@ class PostModel {
             values += `(${p.forum}, 
                         (SELECT "UID" FROM "user" WHERE nickname = '${p.author}'), 
                         ${p.thread}, 
-                        ${p.parent === undefined ? 'NULL': `${p.parent}`}, 
-                        '${p.message}')
-            `;
+                        ${
+                            p.parent === undefined ?  `NULL, '{}'`: 
+                            `${p.parent}, (SELECT path FROM post WHERE "PID" = ${p.parent}) || ${p.parent}`
+                        }, 
+                        '${p.message}'
+                    )`;
             if (!Object.is(arr.length - 1, i)) {
                 values += ',';
             }
@@ -21,7 +24,7 @@ class PostModel {
             name: '',
             text: `
                 INSERT INTO 
-                    post("ForumID", "AuthorID", "ThreadID", "ParentID", message)
+                    post("ForumID", "AuthorID", "ThreadID", "ParentID", path, message)
                 VALUES ${values}
                 RETURNING 
                     "PID" as id,
@@ -29,15 +32,42 @@ class PostModel {
             `,
             values: []
         };
-
         return db.sendQuery(query);
     }
 
     async getThreadPosts(filter: IPostFilter) {
+        let sinceExpr = '';
+        const compSym = filter.desc ? '<': '>';
+        const desc = filter.desc ? 'DESC' : 'ASC';
+        const newPath = '(path || "PID")';
 
-        const query: IQuery = {
-            name: '',
-            text: `
+        if (filter.since) {
+            switch (filter.sort) {
+                case 'tree': {
+                    sinceExpr = `
+                        AND ${newPath} ${compSym} (
+                            SELECT ${newPath} FROM post
+                            WHERE "PID" = ${filter.since}
+                        )
+                    `;
+                } break;
+                case 'parent_tree': {
+                    sinceExpr = `
+                        AND ${newPath} ${compSym} (
+                            SELECT ${newPath}${filter.desc ?'[1:1]': ''}  FROM post
+                            WHERE "PID" = ${filter.since}
+                        )
+                    `;
+                } break;
+                default: {
+                    sinceExpr = `AND "PID" ${compSym} '${filter.since}'`;
+                }
+            }
+        }
+
+        const limit = `LIMIT $3`;
+        const where = `WHERE "ThreadID" = $2`;
+        let select = `
                 SELECT 
                     u."nickname" as author,
                     p.created,  
@@ -45,17 +75,49 @@ class PostModel {
                     "PID" as id,  
                     "isEdited", 
                     p.message, 
-                    "ParentID" as parent,
+                    COALESCE("ParentID", 0) as parent,
                     "ThreadID" as thread
                 FROM post p
                 INNER JOIN "user" u on u."UID" = p."AuthorID"
-                WHERE p."ThreadID" = $2
-                ${filter.since ? `AND "PID" > ${filter.since}`: ''}
-                ORDER BY 
-                    created ${filter.desc ? 'DESC' : 'ASC'},
-                    id ${filter.desc ? 'DESC' : 'ASC'}
-                LIMIT $3
-            `,
+            `;
+
+        switch (filter.sort) {
+            case 'tree': {
+                select += `
+                    ${where}
+                    ${sinceExpr}   
+                    ORDER BY ${newPath} ${desc}
+                    ${limit}
+                `;
+            } break;
+            case 'parent_tree': {
+                select =  `
+                    WITH parents AS (
+                        SELECT "PID" as id FROM post 
+                        ${where}
+                        AND "ParentID" IS NULL
+                        ${sinceExpr}
+                        ORDER BY id ${desc}
+                        ${limit}
+                    )
+                ` + select + `
+                    WHERE  ${newPath}[1] IN (SELECT id FROM parents)
+                    ORDER BY ${newPath}[1] ${desc}, ${newPath} 
+                `;
+            } break;
+            default: {
+                select += `
+                    ${where}
+                    ${sinceExpr}   
+                    ORDER BY created ${desc}, "PID" ${desc} 
+                    ${limit}
+                `;
+            }
+        }
+
+        const query: IQuery = {
+            name: '',
+            text: select,
             values: [filter.forum, filter.threadId, filter.limit]
         };
 

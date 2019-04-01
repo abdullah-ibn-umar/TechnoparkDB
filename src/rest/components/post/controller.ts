@@ -30,7 +30,7 @@ class PostController {
             if (rq.message.includes('AuthorID')) {
                 res.status(404).json(<IError>{ message: `Author not found` });
             } else {
-                res.status(400).json(<IError>{ message: rq.message });
+                res.status(409).json(<IError>{ message: rq.message });
             }
             return;
         }
