@@ -25,11 +25,11 @@ class ThreadController {
                 return;
             const forumId = forum.id || 0;
             const thread = {
-                author: user.data,
+                author: user.data['UID'],
                 created: req.body.created,
                 forum: forumId,
                 message: req.body.message,
-                slug: req.body.slug || '',
+                slug: req.body.slug,
                 title: req.body.title,
                 votes: 0
             };
@@ -73,8 +73,8 @@ class ThreadController {
                 res.status(400).json({ message: rq.message });
                 return;
             }
-            thread.message = threadUpdate.message;
-            thread.title = threadUpdate.title;
+            thread.message = rq.data.rows[0]['message'];
+            thread.title = rq.data.rows[0]['title'];
             res.json(thread);
         });
         this.forumThreads = (req, res, data) => __awaiter(this, void 0, void 0, function* () {
@@ -91,7 +91,8 @@ class ThreadController {
                 return;
             const data = {
                 threadId: r.data['id'],
-                forum: r.data['forum_id']
+                forumId: r.data['forum_id'],
+                forum: r.data['forum']
             };
             yield controller_1.default.create(req, res, data);
         });
@@ -101,7 +102,8 @@ class ThreadController {
                 return;
             const data = {
                 threadId: r.data['id'],
-                forum: r.data['forum']
+                forum: r.data['forum'],
+                forumId: r.data['forum_id']
             };
             yield controller_1.default.threadPosts(req, res, data);
         });

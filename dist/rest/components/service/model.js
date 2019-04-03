@@ -18,10 +18,15 @@ class ServiceModel {
             const query = {
                 name: 'get_tables_status',
                 text: `
-                SELECT relname as table, n_live_tup as rowcount
-                FROM pg_stat_user_tables 
-                ORDER BY relname ASC
-            `,
+                  SELECT
+                        json_build_object(
+                            'forum', (SELECT COUNT(*) FROM forum),
+                            'user', (SELECT COUNT(*) FROM public."user"),
+                            'thread', (SELECT COUNT(*) FROM thread),
+                            'post', (SELECT COUNT(*) FROM post)
+                        )
+                  as status
+                `,
                 values: []
             };
             return database_1.default.sendQuery(query);
@@ -32,7 +37,7 @@ class ServiceModel {
             const query = {
                 name: 'clear_tables',
                 text: `
-                TRUNCATE TABLE users, post, thread, forum
+                TRUNCATE TABLE public."user", post, thread, forum CASCADE
             `,
                 values: []
             };

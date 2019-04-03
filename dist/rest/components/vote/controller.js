@@ -31,11 +31,8 @@ class VoteController {
                 }
                 return;
             }
-            const isChanged = rq.data.rows[0].update_vote;
-            if (isChanged) {
-                // @ts-ignore
-                thread.votes += vote.voice;
-            }
+            // @ts-ignore
+            thread.votes += rq.data.rows[0].update_vote;
             // @ts-ignore
             delete thread['forum_id'];
             res.json(thread);

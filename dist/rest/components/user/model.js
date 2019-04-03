@@ -17,7 +17,7 @@ class UserModel {
         return __awaiter(this, void 0, void 0, function* () {
             const query = {
                 name: 'create_user',
-                text: 'INSERT INTO users(about, email, nickname, fullname) VALUES ($1, $2, $3, $4)',
+                text: 'INSERT INTO "user"(about, email, fullname, nickname) VALUES ($1, $2, $3, $4)',
                 values: Object.values(user)
             };
             return database_1.default.sendQuery(query);
@@ -26,8 +26,15 @@ class UserModel {
     update(user) {
         return __awaiter(this, void 0, void 0, function* () {
             const query = {
-                name: 'create_user',
-                text: 'UPDATE users SET about=$1, email=$2, fullname=$4 WHERE nickname = $3',
+                name: 'update_user',
+                text: `
+                UPDATE "user" SET 
+                    about= COALESCE($1, about), 
+                    email= COALESCE($2, email), 
+                    fullname= COALESCE($3, fullname) 
+                WHERE nickname = $4 
+                RETURNING *  
+            `,
                 values: Object.values(user)
             };
             return database_1.default.sendQuery(query);
@@ -35,26 +42,30 @@ class UserModel {
     }
     forumUsers(data) {
         return __awaiter(this, void 0, void 0, function* () {
+            let sinceExpr = '';
+            if (data.since) {
+                sinceExpr = `AND nickname ${data.desc ? '<' : '>'} '${data.since}' COLLATE "C"`;
+            }
             const query = {
-                name: 'get_users',
+                name: '',
                 text: `
                 SELECT  about, email, fullname, nickname
-                FROM users, forum 
+                FROM "user" u, forum 
                 WHERE forum.slug = $1
-                AND users."UID" > $2
+                ${sinceExpr}
                 AND (
-                    users."UID" in (
-                        SELECT "AuthorID" from post where "AuthorID" = users."UID"
+                    u."UID" in (
+                        SELECT "AuthorID" FROM post WHERE "ForumID" = forum."FID"
                     )
                     OR
-                    users."UID" in (
-                        SELECT "AuthorID" from thread where "AuthorID" = users."UID"
+                    u."UID" in (
+                        SELECT "AuthorID" FROM thread WHERE "ForumID" = forum."FID"
                     )
                 )
-                ORDER BY nickname ${data.desc ? 'DESC' : 'ASC'}
-                LIMIT $3
+                ORDER BY nickname COLLATE "C" ${data.desc ? 'DESC' : 'ASC'}
+                ${data.limit ? `LIMIT ${data.limit}` : ''}
             `,
-                values: [data.slug, data.since, data.limit]
+                values: [data.slug]
             };
             return database_1.default.sendQuery(query);
         });
@@ -62,8 +73,9 @@ class UserModel {
     getOne(nickname, full = true) {
         return __awaiter(this, void 0, void 0, function* () {
             const query = {
-                name: 'get_one_user',
-                text: `SELECT ${full ? 'about, email, fullname' : '"UID"'} FROM users WHERE nickname = $1`,
+                name: `get_one_user_${full ? '1' : '2'}`,
+                text: `SELECT ${full ? 'about, email, fullname, nickname' : '"UID", nickname'} 
+                    FROM "user" WHERE nickname = $1`,
                 values: [nickname]
             };
             return database_1.default.sendQuery(query);
@@ -73,7 +85,7 @@ class UserModel {
         return __awaiter(this, void 0, void 0, function* () {
             const query = {
                 name: 'get_conflicted_user',
-                text: 'SELECT about, email, fullname, nickname FROM users WHERE nickname = $1 OR email = $2',
+                text: 'SELECT about, email, fullname, nickname FROM "user" WHERE nickname = $1 OR email = $2',
                 values: [data.nickname, data.email]
             };
             return database_1.default.sendQuery(query);

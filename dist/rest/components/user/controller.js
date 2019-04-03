@@ -25,8 +25,8 @@ class UserController {
             const user = {
                 about: profile.about,
                 email: profile.email,
-                nickname: r.data,
-                fullName: profile.fullname
+                fullname: profile.fullname,
+                nickname: r.data
             };
             const rq = yield model_1.default.create(user);
             if (rq.isError) {
@@ -71,23 +71,26 @@ class UserController {
             const user = {
                 about: profile.about,
                 email: profile.email,
-                nickname: r.data,
-                fullName: profile.fullname
+                fullname: profile.fullname,
+                nickname: r.data
             };
             const rq = yield model_1.default.update(user);
             if (rq.isError) {
                 if (+rq.code === constants_1.DBConflictCode) {
-                    const confRes = yield model_1.default.getConflicted(user);
-                    if (confRes.isError) {
-                        res.status(400).json({ message: confRes.message });
-                        return;
-                    }
-                    res.status(409).json(confRes.data.rows);
+                    res.status(409).json({ message: `This email is already registered by user` });
                     return;
                 }
                 res.status(400).json({ message: rq.message });
                 return;
             }
+            if (!rq.data.rowCount) {
+                res.status(404).json({ message: `User ${user.nickname} not found` });
+                return;
+            }
+            const _user = rq.data.rows[0];
+            user.about = _user.about;
+            user.fullname = _user.fullname;
+            user.email = _user.email;
             res.status(200).json(user);
         });
         this.forumUsers = (req, res, data) => __awaiter(this, void 0, void 0, function* () {
@@ -109,7 +112,7 @@ class UserController {
                 return { error: true };
             }
             return {
-                data: user.data.rows[0]['UID'],
+                data: user.data.rows[0],
                 error: false
             };
         });

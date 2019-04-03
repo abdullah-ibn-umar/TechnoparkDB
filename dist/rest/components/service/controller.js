@@ -20,13 +20,7 @@ class ServiceController {
                 res.status(400).json({ message: rq.message });
                 return;
             }
-            const result = {};
-            rq.data.rows.forEach(table => {
-                const val = Object.values(table);
-                // @ts-ignore
-                result[val[0]] = +val[1];
-            });
-            res.json(result);
+            res.json(rq.data.rows[0].status);
         });
         this.clear = (req, res) => __awaiter(this, void 0, void 0, function* () {
             const rq = yield model_1.default.truncateTables();

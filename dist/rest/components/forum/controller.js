@@ -18,14 +18,14 @@ const controller_2 = __importDefault(require("../thread/controller"));
 class ForumController {
     constructor() {
         this.create = (req, res) => __awaiter(this, void 0, void 0, function* () {
-            const author = req.body.nickname;
+            const author = req.body.user;
             const user = yield controller_1.default.getUser(req, res, author);
             if (user.error)
                 return;
             const forum = {
                 slug: req.body.slug,
                 title: req.body.title,
-                user: user.data,
+                user: user.data['UID'],
                 posts: 0,
                 threads: 0
             };
@@ -43,7 +43,7 @@ class ForumController {
                 res.status(400).json({ message: rq.message });
                 return;
             }
-            forum.user = author;
+            forum.user = user.data['nickname'];
             res.status(201).json(forum);
         });
         this.details = (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -82,9 +82,9 @@ class ForumController {
                 slug: r.data,
                 limit: req.query.limit,
                 since: req.query.since,
-                desc: JSON.parse(req.query.desc)
+                desc: req.query.desc ? JSON.parse(req.query.desc) : false
             };
-            const obj = req.baseUrl.split('/')[3];
+            const obj = req.path.split('/')[2];
             if (obj === 'threads') {
                 yield controller_2.default.forumThreads(req, res, data);
             }
@@ -110,7 +110,7 @@ class ForumController {
             }
             const forum = {
                 id: rf.data.rows[0]['FID'],
-                slug,
+                slug: rf.data.rows[0]['slug'],
                 title: '',
                 user: ''
             };

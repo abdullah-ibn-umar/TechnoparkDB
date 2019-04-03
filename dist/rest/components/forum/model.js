@@ -17,7 +17,7 @@ class ForumModel {
         return __awaiter(this, void 0, void 0, function* () {
             const query = {
                 name: 'create_forum',
-                text: 'INSERT INTO forum ("UID", slug, title) VALUES ($1, $2, $3)',
+                text: `INSERT INTO forum ("UID", slug, title) VALUES ($1, $2, $3)`,
                 values: [forum.user, forum.slug, forum.title]
             };
             return database_1.default.sendQuery(query);
@@ -26,9 +26,9 @@ class ForumModel {
     getOne(slug, full = true) {
         return __awaiter(this, void 0, void 0, function* () {
             const query = {
-                name: 'get_one_forum',
-                text: `SELECT ${full ? 'posts, slug, threads, title, nickname as user' : '"FID"'} FROM forum 
-                   ${full ? 'INNER JOIN users ON forum."UID" = users."UID"' : ''} 
+                name: `get_one_forum_${full ? '1' : '2'}`,
+                text: `SELECT ${full ? 'posts, slug, threads, title, nickname as user' : '"FID", slug'} FROM forum 
+                   ${full ? 'INNER JOIN "user" u ON forum."UID" = u."UID"' : ''} 
                    WHERE slug = $1`,
                 values: [slug]
             };

@@ -16,11 +16,12 @@ class ThreadModel {
     create(thread) {
         return __awaiter(this, void 0, void 0, function* () {
             const query = {
-                name: 'create_forum',
+                name: '',
                 text: `INSERT INTO thread 
                         ("ForumID", "AuthorID", created, message, slug, title) 
-                   VALUES ($1, $2, $3, $4, $5, $6) RETURNING "TID"`,
-                values: [thread.forum, thread.author, thread.created, thread.message, thread.slug, thread.title]
+                   VALUES ($1, $2, $3, $4, '${thread.slug || thread.title.toLowerCase().replace(' ', '-')}', $5) 
+                   RETURNING "TID"`,
+                values: [thread.forum, thread.author, thread.created, thread.message, thread.title]
             };
             return database_1.default.sendQuery(query);
         });
@@ -29,8 +30,8 @@ class ThreadModel {
         return __awaiter(this, void 0, void 0, function* () {
             const query = {
                 name: 'update_thread',
-                text: `UPDATE thread SET message = $1, title = $2 
-                   WHERE "TID" = $3`,
+                text: `UPDATE thread SET message = COALESCE($1, message), title = COALESCE($2, title) 
+                   WHERE "TID" = $3 RETURNING message, title`,
                 values: [thread.message, thread.title, thread.id]
             };
             return database_1.default.sendQuery(query);
@@ -38,6 +39,10 @@ class ThreadModel {
     }
     forumThreads(thread) {
         return __awaiter(this, void 0, void 0, function* () {
+            let sinceExpr = '';
+            if (thread.since) {
+                sinceExpr = `AND created ${thread.desc ? '<=' : '>='} '${thread.since}'`;
+            }
             const query = {
                 name: '',
                 text: `SELECT
@@ -51,12 +56,12 @@ class ThreadModel {
                     votes
                    FROM thread t
                    INNER JOIN forum f ON f."FID" = "ForumID" AND f.slug = $1  
-                   INNER JOIN users u ON u."UID" = "AuthorID"
-                   WHERE  created > $2 
+                   INNER JOIN "user" u ON u."UID" = "AuthorID"
+                   ${sinceExpr}  
                    ORDER BY created
                    ${thread.desc ? 'DESC' : 'ASC'}
-                   LIMIT $3`,
-                values: [thread.slug, thread.since, thread.limit]
+                   LIMIT $2`,
+                values: [thread.slug, thread.limit]
             };
             return database_1.default.sendQuery(query);
         });
@@ -64,7 +69,7 @@ class ThreadModel {
     getOne(data, full = true) {
         return __awaiter(this, void 0, void 0, function* () {
             const query = {
-                name: 'get_one_thread',
+                name: ``,
                 text: `SELECT ${full ?
                     `u.nickname as author,
                     created,
@@ -75,7 +80,7 @@ class ThreadModel {
                     t.slug,
                     t.title,
                     votes FROM thread t 
-                    INNER JOIN users u ON u."UID" = t."AuthorID"
+                    INNER JOIN "user" u ON u."UID" = t."AuthorID"
                     INNER JOIN forum f ON f."FID" = t."ForumID"`
                     : `t."TID" FROM thread t`} 
                 WHERE ${typeof data === 'string' ? 't.slug' : 't."TID"'} = $1 `,
