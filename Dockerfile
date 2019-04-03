@@ -17,8 +17,8 @@ USER postgres
 
 RUN service postgresql start &&\
     psql --command "CREATE USER jahongir WITH SUPERUSER PASSWORD 'Password1234';" &&\
-    createdb -O forum jahongir &&\
-    psql < /opt/techonaprk-db/forum.sql &&\
+    createdb -O jahongir forum &&\
+    psql < /opt/technopark-db/forum.sql &&\
     service postgresql stop
 
 COPY config/pg_hba.conf /etc/postgresql/$PGVER/main/pg_hba.conf
