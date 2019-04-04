@@ -1,6 +1,9 @@
 {
   "name": "technoparkdb",
   "version": "1.0.0",
+  "repository": {
+    "url": "https://github.com/Jaxa9697/TechnoparkDB"
+  },
   "description": "Test application for Technopark DB subject",
   "main": "dist/index.js",
   "scripts": {

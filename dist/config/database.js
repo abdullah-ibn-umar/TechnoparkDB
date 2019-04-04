@@ -14,7 +14,7 @@ class Database {
         this.pool = new pg_1.Pool({
             host: 'localhost',
             port: 5432,
-            database: 'forum',
+            database: 'postgres',
             user: 'jahongir',
             password: 'Password1234',
             max: 20

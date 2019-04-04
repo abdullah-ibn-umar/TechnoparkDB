@@ -26,7 +26,6 @@ COPY ./ /opt/technopark-db/
 USER postgres
 RUN service postgresql start &&\
     psql --command "CREATE USER jahongir WITH SUPERUSER PASSWORD 'Password1234';" &&\
-    createdb -O jahongir forum &&\
     psql < /opt/technopark-db/forum.sql &&\
     service postgresql stop
 
