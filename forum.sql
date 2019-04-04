@@ -5,7 +5,7 @@
 -- Dumped from database version 10.7 (Ubuntu 10.7-1.pgdg18.04+1)
 -- Dumped by pg_dump version 11.2 (Ubuntu 11.2-1.pgdg18.04+1)
 
--- Started on 2019-04-01 23:08:25 MSK
+-- Started on 2019-04-04 06:38:04 MSK
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -26,7 +26,7 @@ CREATE EXTENSION IF NOT EXISTS citext WITH SCHEMA public;
 
 
 --
--- TOC entry 3072 (class 0 OID 0)
+-- TOC entry 3070 (class 0 OID 0)
 -- Dependencies: 2
 -- Name: EXTENSION citext; Type: COMMENT; Schema: -; Owner: 
 --
@@ -35,7 +35,7 @@ COMMENT ON EXTENSION citext IS 'data type for case-insensitive character strings
 
 
 --
--- TOC entry 265 (class 1255 OID 26203)
+-- TOC entry 262 (class 1255 OID 26203)
 -- Name: check_post_parent(); Type: FUNCTION; Schema: public; Owner: jahongir
 --
 
@@ -62,44 +62,13 @@ $$;
 ALTER FUNCTION public.check_post_parent() OWNER TO jahongir;
 
 --
--- TOC entry 232 (class 1255 OID 24611)
--- Name: createUser(text, text, text, text); Type: FUNCTION; Schema: public; Owner: jahongir
---
-
-CREATE FUNCTION public."createUser"(text, text, text, text) RETURNS TABLE(about text, fullname text, nickname text, email text)
-    LANGUAGE plpgsql
-    AS $_$
-
-BEGIN
-	perform (SELECT 1 FROM users 
-	WHERE users.nickname = $3 OR users.email = $4);
-	
-	IF FOUND THEN
-		return query SELECT u.about, u.email, u.nickname, u.fullname
-		FROM users as u
-		WHERE u.email = $4 OR u.nickname = $3;
-	ELSE
-		return query INSERT INTO users as u
-			(u.about, u.fullname, u.nickname, u.email)
-		VALUES
-			($1, $2, $3, $4) RETURNING "UID";
-	END IF;
-END;
-
-$_$;
-
-
-ALTER FUNCTION public."createUser"(text, text, text, text) OWNER TO jahongir;
-
---
--- TOC entry 266 (class 1255 OID 24758)
+-- TOC entry 264 (class 1255 OID 24758)
 -- Name: get_post_full(integer); Type: FUNCTION; Schema: public; Owner: jahongir
 --
 
 CREATE FUNCTION public.get_post_full(_id integer) RETURNS TABLE(post_full json)
     LANGUAGE plpgsql
-    AS $$
-BEGIN       
+    AS $$BEGIN       
     IF EXISTS (SELECT 1 FROM post WHERE "PID" = _id) THEN
         SELECT INTO post_full json_build_object (
 			'author',
@@ -141,11 +110,11 @@ BEGIN
                 )
             )
         FROM post p 
-        INNER JOIN public."user" u ON u."UID" = p."AuthorID"
+        INNER JOIN users u ON u."UID" = p."AuthorID"
         INNER JOIN forum f ON f."FID" = p."ForumID"
         INNER JOIN thread t ON t."TID" = p."ThreadID"
-		INNER JOIN public."user" u2 ON u2."UID" = t."AuthorID"
-		INNER JOIN public."user" u3 ON u3."UID" = f."UID"
+		INNER JOIN users u2 ON u2."UID" = t."AuthorID"
+		INNER JOIN users u3 ON u3."UID" = f."UID"
         WHERE p."PID" = _id;
         RETURN NEXT;
     ELSE
@@ -158,14 +127,13 @@ $$;
 ALTER FUNCTION public.get_post_full(_id integer) OWNER TO jahongir;
 
 --
--- TOC entry 267 (class 1255 OID 25963)
+-- TOC entry 265 (class 1255 OID 25963)
 -- Name: update_post(text, integer); Type: FUNCTION; Schema: public; Owner: jahongir
 --
 
 CREATE FUNCTION public.update_post(msg text, _id integer) RETURNS TABLE(author public.citext, created timestamp with time zone, forum public.citext, id integer, "isEdited" boolean, message text, parent integer, thread integer)
     LANGUAGE plpgsql
-    AS $$
-DECLARE 
+    AS $$DECLARE 
 	_message text;
 BEGIN
 	SELECT INTO _message post.message FROM post WHERE "PID" = _id;
@@ -187,7 +155,7 @@ BEGIN
             p."ParentID" as parent,
             t."TID" as thread
         FROM post p
-        INNER JOIN public."user" u ON u."UID" = p."AuthorID"
+        INNER JOIN users u ON u."UID" = p."AuthorID"
         INNER JOIN forum f ON f."FID" = p."ForumID"
         INNER JOIN thread t ON t."TID" = p."ThreadID"
         WHERE "PID" = _id;
@@ -237,7 +205,7 @@ $$;
 ALTER FUNCTION public.update_thread_quantity() OWNER TO jahongir;
 
 --
--- TOC entry 241 (class 1255 OID 24797)
+-- TOC entry 240 (class 1255 OID 24797)
 -- Name: update_thread_votes(); Type: FUNCTION; Schema: public; Owner: jahongir
 --
 
@@ -255,7 +223,7 @@ $$;
 ALTER FUNCTION public.update_thread_votes() OWNER TO jahongir;
 
 --
--- TOC entry 263 (class 1255 OID 25678)
+-- TOC entry 261 (class 1255 OID 25678)
 -- Name: update_thread_votes2(); Type: FUNCTION; Schema: public; Owner: jahongir
 --
 
@@ -273,51 +241,18 @@ $$;
 ALTER FUNCTION public.update_thread_votes2() OWNER TO jahongir;
 
 --
--- TOC entry 262 (class 1255 OID 24806)
--- Name: update_vote(integer, integer, integer); Type: FUNCTION; Schema: public; Owner: jahongir
---
-
-CREATE FUNCTION public.update_vote(_author integer, _thread integer, _voice integer) RETURNS boolean
-    LANGUAGE plpgsql
-    AS $$
-DECLARE 
-	_uid integer;
-	_old_voice integer;
-BEGIN 
-	SELECT INTO _uid "UID" FROM users WHERE nickname = _author; 
-	SELECT INTO _old_voice voice FROM vote WHERE "AuthorID" = _uid AND "ThreadID" = _thread;
-	IF FOUND THEN
-		IF _old_voice = _voice THEN
-			RETURN false;
-		ELSE
-			UPDATE vote SET voice = _voice;
-			RETURN true;
-		END IF;
-	ELSE
-		INSERT INTO vote("AuthorID", "ThreadID", voice)
-		VALUES (_uid, _thread, _voice);
-		RETURN true;
-	END IF;
-END;
-$$;
-
-
-ALTER FUNCTION public.update_vote(_author integer, _thread integer, _voice integer) OWNER TO jahongir;
-
---
--- TOC entry 264 (class 1255 OID 25555)
+-- TOC entry 263 (class 1255 OID 25555)
 -- Name: update_vote(text, integer, integer); Type: FUNCTION; Schema: public; Owner: jahongir
 --
 
 CREATE FUNCTION public.update_vote(_author text, _thread integer, _voice integer) RETURNS integer
     LANGUAGE plpgsql
-    AS $$
-DECLARE 
+    AS $$DECLARE 
     _uid integer;
     _old_voice integer;
     _id integer;
 BEGIN 
-    SELECT INTO _uid "UID" FROM "user" WHERE nickname = _author; 
+    SELECT INTO _uid "UID" FROM users WHERE nickname = _author; 
     SELECT INTO _old_voice, _id voice, "VID" FROM vote WHERE "AuthorID" = _uid AND "ThreadID" = _thread;
     IF FOUND THEN
         IF _old_voice = _voice THEN
@@ -336,8 +271,6 @@ $$;
 
 
 ALTER FUNCTION public.update_vote(_author text, _thread integer, _voice integer) OWNER TO jahongir;
-
-SET default_tablespace = '';
 
 SET default_with_oids = false;
 
@@ -374,7 +307,7 @@ CREATE SEQUENCE public.fid
 ALTER TABLE public.fid OWNER TO jahongir;
 
 --
--- TOC entry 3073 (class 0 OID 0)
+-- TOC entry 3071 (class 0 OID 0)
 -- Dependencies: 200
 -- Name: fid; Type: SEQUENCE OWNED BY; Schema: public; Owner: jahongir
 --
@@ -418,7 +351,7 @@ CREATE SEQUENCE public.pid
 ALTER TABLE public.pid OWNER TO jahongir;
 
 --
--- TOC entry 3074 (class 0 OID 0)
+-- TOC entry 3072 (class 0 OID 0)
 -- Dependencies: 204
 -- Name: pid; Type: SEQUENCE OWNED BY; Schema: public; Owner: jahongir
 --
@@ -461,7 +394,7 @@ CREATE SEQUENCE public.tid
 ALTER TABLE public.tid OWNER TO jahongir;
 
 --
--- TOC entry 3075 (class 0 OID 0)
+-- TOC entry 3073 (class 0 OID 0)
 -- Dependencies: 202
 -- Name: tid; Type: SEQUENCE OWNED BY; Schema: public; Owner: jahongir
 --
@@ -471,10 +404,10 @@ ALTER SEQUENCE public.tid OWNED BY public.thread."TID";
 
 --
 -- TOC entry 197 (class 1259 OID 24591)
--- Name: user; Type: TABLE; Schema: public; Owner: jahongir
+-- Name: users; Type: TABLE; Schema: public; Owner: jahongir
 --
 
-CREATE TABLE public."user" (
+CREATE TABLE public.users (
     "UID" integer NOT NULL,
     about text NOT NULL,
     email public.citext NOT NULL,
@@ -483,7 +416,7 @@ CREATE TABLE public."user" (
 );
 
 
-ALTER TABLE public."user" OWNER TO jahongir;
+ALTER TABLE public.users OWNER TO jahongir;
 
 --
 -- TOC entry 198 (class 1259 OID 24601)
@@ -501,12 +434,12 @@ CREATE SEQUENCE public.uid
 ALTER TABLE public.uid OWNER TO jahongir;
 
 --
--- TOC entry 3076 (class 0 OID 0)
+-- TOC entry 3074 (class 0 OID 0)
 -- Dependencies: 198
 -- Name: uid; Type: SEQUENCE OWNED BY; Schema: public; Owner: jahongir
 --
 
-ALTER SEQUENCE public.uid OWNED BY public."user"."UID";
+ALTER SEQUENCE public.uid OWNED BY public.users."UID";
 
 
 --
@@ -540,7 +473,7 @@ CREATE SEQUENCE public.vid
 ALTER TABLE public.vid OWNER TO jahongir;
 
 --
--- TOC entry 3077 (class 0 OID 0)
+-- TOC entry 3075 (class 0 OID 0)
 -- Dependencies: 206
 -- Name: vid; Type: SEQUENCE OWNED BY; Schema: public; Owner: jahongir
 --
@@ -549,7 +482,7 @@ ALTER SEQUENCE public.vid OWNED BY public.vote."VID";
 
 
 --
--- TOC entry 2904 (class 2604 OID 24646)
+-- TOC entry 2902 (class 2604 OID 24646)
 -- Name: forum FID; Type: DEFAULT; Schema: public; Owner: jahongir
 --
 
@@ -557,7 +490,7 @@ ALTER TABLE ONLY public.forum ALTER COLUMN "FID" SET DEFAULT nextval('public.fid
 
 
 --
--- TOC entry 2911 (class 2604 OID 24698)
+-- TOC entry 2909 (class 2604 OID 24698)
 -- Name: post PID; Type: DEFAULT; Schema: public; Owner: jahongir
 --
 
@@ -565,7 +498,7 @@ ALTER TABLE ONLY public.post ALTER COLUMN "PID" SET DEFAULT nextval('public.pid'
 
 
 --
--- TOC entry 2907 (class 2604 OID 24669)
+-- TOC entry 2905 (class 2604 OID 24669)
 -- Name: thread TID; Type: DEFAULT; Schema: public; Owner: jahongir
 --
 
@@ -573,15 +506,15 @@ ALTER TABLE ONLY public.thread ALTER COLUMN "TID" SET DEFAULT nextval('public.ti
 
 
 --
--- TOC entry 2903 (class 2604 OID 24603)
--- Name: user UID; Type: DEFAULT; Schema: public; Owner: jahongir
+-- TOC entry 2901 (class 2604 OID 24603)
+-- Name: users UID; Type: DEFAULT; Schema: public; Owner: jahongir
 --
 
-ALTER TABLE ONLY public."user" ALTER COLUMN "UID" SET DEFAULT nextval('public.uid'::regclass);
+ALTER TABLE ONLY public.users ALTER COLUMN "UID" SET DEFAULT nextval('public.uid'::regclass);
 
 
 --
--- TOC entry 2914 (class 2604 OID 24794)
+-- TOC entry 2912 (class 2604 OID 24794)
 -- Name: vote VID; Type: DEFAULT; Schema: public; Owner: jahongir
 --
 
@@ -589,7 +522,7 @@ ALTER TABLE ONLY public.vote ALTER COLUMN "VID" SET DEFAULT nextval('public.vid'
 
 
 --
--- TOC entry 2922 (class 2606 OID 24636)
+-- TOC entry 2920 (class 2606 OID 24636)
 -- Name: forum forum_pkey; Type: CONSTRAINT; Schema: public; Owner: jahongir
 --
 
@@ -598,7 +531,7 @@ ALTER TABLE ONLY public.forum
 
 
 --
--- TOC entry 2924 (class 2606 OID 25086)
+-- TOC entry 2922 (class 2606 OID 25086)
 -- Name: forum forum_slug_key; Type: CONSTRAINT; Schema: public; Owner: jahongir
 --
 
@@ -607,7 +540,7 @@ ALTER TABLE ONLY public.forum
 
 
 --
--- TOC entry 2929 (class 2606 OID 24680)
+-- TOC entry 2927 (class 2606 OID 24680)
 -- Name: post post_pkey; Type: CONSTRAINT; Schema: public; Owner: jahongir
 --
 
@@ -616,7 +549,7 @@ ALTER TABLE ONLY public.post
 
 
 --
--- TOC entry 2927 (class 2606 OID 24656)
+-- TOC entry 2925 (class 2606 OID 24656)
 -- Name: thread thread_pkey; Type: CONSTRAINT; Schema: public; Owner: jahongir
 --
 
@@ -625,34 +558,34 @@ ALTER TABLE ONLY public.thread
 
 
 --
--- TOC entry 2916 (class 2606 OID 24919)
--- Name: user users_email_key; Type: CONSTRAINT; Schema: public; Owner: jahongir
+-- TOC entry 2914 (class 2606 OID 24919)
+-- Name: users users_email_key; Type: CONSTRAINT; Schema: public; Owner: jahongir
 --
 
-ALTER TABLE ONLY public."user"
+ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_email_key UNIQUE (email);
 
 
 --
--- TOC entry 2918 (class 2606 OID 24943)
--- Name: user users_nickname_key; Type: CONSTRAINT; Schema: public; Owner: jahongir
+-- TOC entry 2916 (class 2606 OID 24943)
+-- Name: users users_nickname_key; Type: CONSTRAINT; Schema: public; Owner: jahongir
 --
 
-ALTER TABLE ONLY public."user"
+ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_nickname_key UNIQUE (nickname);
 
 
 --
--- TOC entry 2920 (class 2606 OID 24598)
--- Name: user users_pkey; Type: CONSTRAINT; Schema: public; Owner: jahongir
+-- TOC entry 2918 (class 2606 OID 24598)
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: jahongir
 --
 
-ALTER TABLE ONLY public."user"
+ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_pkey PRIMARY KEY ("UID");
 
 
 --
--- TOC entry 2931 (class 2606 OID 24781)
+-- TOC entry 2929 (class 2606 OID 24781)
 -- Name: vote vote_pkey; Type: CONSTRAINT; Schema: public; Owner: jahongir
 --
 
@@ -661,7 +594,7 @@ ALTER TABLE ONLY public.vote
 
 
 --
--- TOC entry 2925 (class 1259 OID 25351)
+-- TOC entry 2923 (class 1259 OID 25351)
 -- Name: index_on_threads_slug; Type: INDEX; Schema: public; Owner: jahongir
 --
 
@@ -669,7 +602,7 @@ CREATE UNIQUE INDEX index_on_threads_slug ON public.thread USING btree (slug);
 
 
 --
--- TOC entry 2943 (class 2620 OID 26204)
+-- TOC entry 2941 (class 2620 OID 26204)
 -- Name: post before_insert; Type: TRIGGER; Schema: public; Owner: jahongir
 --
 
@@ -677,7 +610,7 @@ CREATE TRIGGER before_insert BEFORE INSERT ON public.post FOR EACH ROW EXECUTE P
 
 
 --
--- TOC entry 2944 (class 2620 OID 25792)
+-- TOC entry 2942 (class 2620 OID 25792)
 -- Name: vote insert_vote; Type: TRIGGER; Schema: public; Owner: jahongir
 --
 
@@ -685,7 +618,7 @@ CREATE TRIGGER insert_vote AFTER INSERT ON public.vote FOR EACH ROW EXECUTE PROC
 
 
 --
--- TOC entry 2942 (class 2620 OID 24736)
+-- TOC entry 2940 (class 2620 OID 24736)
 -- Name: post update_forum_post; Type: TRIGGER; Schema: public; Owner: jahongir
 --
 
@@ -693,7 +626,7 @@ CREATE TRIGGER update_forum_post AFTER INSERT ON public.post FOR EACH ROW EXECUT
 
 
 --
--- TOC entry 2941 (class 2620 OID 24738)
+-- TOC entry 2939 (class 2620 OID 24738)
 -- Name: thread update_forum_thread; Type: TRIGGER; Schema: public; Owner: jahongir
 --
 
@@ -701,7 +634,7 @@ CREATE TRIGGER update_forum_thread AFTER INSERT ON public.thread FOR EACH ROW EX
 
 
 --
--- TOC entry 2945 (class 2620 OID 25825)
+-- TOC entry 2943 (class 2620 OID 25825)
 -- Name: vote update_vote; Type: TRIGGER; Schema: public; Owner: jahongir
 --
 
@@ -709,16 +642,16 @@ CREATE TRIGGER update_vote AFTER UPDATE ON public.vote FOR EACH ROW EXECUTE PROC
 
 
 --
--- TOC entry 2932 (class 2606 OID 24637)
+-- TOC entry 2930 (class 2606 OID 24637)
 -- Name: forum forum_UID_fkey; Type: FK CONSTRAINT; Schema: public; Owner: jahongir
 --
 
 ALTER TABLE ONLY public.forum
-    ADD CONSTRAINT "forum_UID_fkey" FOREIGN KEY ("UID") REFERENCES public."user"("UID");
+    ADD CONSTRAINT "forum_UID_fkey" FOREIGN KEY ("UID") REFERENCES public.users("UID");
 
 
 --
--- TOC entry 2938 (class 2606 OID 24730)
+-- TOC entry 2936 (class 2606 OID 24730)
 -- Name: post parent_id; Type: FK CONSTRAINT; Schema: public; Owner: jahongir
 --
 
@@ -727,16 +660,16 @@ ALTER TABLE ONLY public.post
 
 
 --
--- TOC entry 2935 (class 2606 OID 24681)
+-- TOC entry 2933 (class 2606 OID 24681)
 -- Name: post post_AuthorID_fkey; Type: FK CONSTRAINT; Schema: public; Owner: jahongir
 --
 
 ALTER TABLE ONLY public.post
-    ADD CONSTRAINT "post_AuthorID_fkey" FOREIGN KEY ("AuthorID") REFERENCES public."user"("UID");
+    ADD CONSTRAINT "post_AuthorID_fkey" FOREIGN KEY ("AuthorID") REFERENCES public.users("UID");
 
 
 --
--- TOC entry 2936 (class 2606 OID 24686)
+-- TOC entry 2934 (class 2606 OID 24686)
 -- Name: post post_ForumID_fkey; Type: FK CONSTRAINT; Schema: public; Owner: jahongir
 --
 
@@ -745,7 +678,7 @@ ALTER TABLE ONLY public.post
 
 
 --
--- TOC entry 2937 (class 2606 OID 24691)
+-- TOC entry 2935 (class 2606 OID 24691)
 -- Name: post post_ThreadID_fkey; Type: FK CONSTRAINT; Schema: public; Owner: jahongir
 --
 
@@ -754,16 +687,16 @@ ALTER TABLE ONLY public.post
 
 
 --
--- TOC entry 2933 (class 2606 OID 24657)
+-- TOC entry 2931 (class 2606 OID 24657)
 -- Name: thread thread_AuthorID_fkey; Type: FK CONSTRAINT; Schema: public; Owner: jahongir
 --
 
 ALTER TABLE ONLY public.thread
-    ADD CONSTRAINT "thread_AuthorID_fkey" FOREIGN KEY ("AuthorID") REFERENCES public."user"("UID");
+    ADD CONSTRAINT "thread_AuthorID_fkey" FOREIGN KEY ("AuthorID") REFERENCES public.users("UID");
 
 
 --
--- TOC entry 2934 (class 2606 OID 24662)
+-- TOC entry 2932 (class 2606 OID 24662)
 -- Name: thread thread_ForumID_fkey; Type: FK CONSTRAINT; Schema: public; Owner: jahongir
 --
 
@@ -772,16 +705,16 @@ ALTER TABLE ONLY public.thread
 
 
 --
--- TOC entry 2939 (class 2606 OID 24782)
+-- TOC entry 2937 (class 2606 OID 24782)
 -- Name: vote vote_AuthorID_fkey; Type: FK CONSTRAINT; Schema: public; Owner: jahongir
 --
 
 ALTER TABLE ONLY public.vote
-    ADD CONSTRAINT "vote_AuthorID_fkey" FOREIGN KEY ("AuthorID") REFERENCES public."user"("UID");
+    ADD CONSTRAINT "vote_AuthorID_fkey" FOREIGN KEY ("AuthorID") REFERENCES public.users("UID");
 
 
 --
--- TOC entry 2940 (class 2606 OID 24787)
+-- TOC entry 2938 (class 2606 OID 24787)
 -- Name: vote vote_ThreadID_fkey; Type: FK CONSTRAINT; Schema: public; Owner: jahongir
 --
 
@@ -789,7 +722,7 @@ ALTER TABLE ONLY public.vote
     ADD CONSTRAINT "vote_ThreadID_fkey" FOREIGN KEY ("ThreadID") REFERENCES public.thread("TID");
 
 
--- Completed on 2019-04-01 23:08:25 MSK
+-- Completed on 2019-04-04 06:38:04 MSK
 
 --
 -- PostgreSQL database dump complete

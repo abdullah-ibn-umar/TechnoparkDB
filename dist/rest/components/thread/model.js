@@ -56,7 +56,7 @@ class ThreadModel {
                     votes
                    FROM thread t
                    INNER JOIN forum f ON f."FID" = "ForumID" AND f.slug = $1  
-                   INNER JOIN "user" u ON u."UID" = "AuthorID"
+                   INNER JOIN users u ON u."UID" = "AuthorID"
                    ${sinceExpr}  
                    ORDER BY created
                    ${thread.desc ? 'DESC' : 'ASC'}
@@ -80,7 +80,7 @@ class ThreadModel {
                     t.slug,
                     t.title,
                     votes FROM thread t 
-                    INNER JOIN "user" u ON u."UID" = t."AuthorID"
+                    INNER JOIN users u ON u."UID" = t."AuthorID"
                     INNER JOIN forum f ON f."FID" = t."ForumID"`
                     : `t."TID" FROM thread t`} 
                 WHERE ${typeof data === 'string' ? 't.slug' : 't."TID"'} = $1 `,

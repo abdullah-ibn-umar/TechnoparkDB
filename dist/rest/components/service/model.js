@@ -21,7 +21,7 @@ class ServiceModel {
                   SELECT
                         json_build_object(
                             'forum', (SELECT COUNT(*) FROM forum),
-                            'user', (SELECT COUNT(*) FROM public."user"),
+                            'user', (SELECT COUNT(*) FROM users),
                             'thread', (SELECT COUNT(*) FROM thread),
                             'post', (SELECT COUNT(*) FROM post)
                         )
@@ -37,7 +37,7 @@ class ServiceModel {
             const query = {
                 name: 'clear_tables',
                 text: `
-                TRUNCATE TABLE public."user", post, thread, forum CASCADE
+                TRUNCATE TABLE users, post, thread, forum CASCADE
             `,
                 values: []
             };

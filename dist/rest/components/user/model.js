@@ -17,7 +17,7 @@ class UserModel {
         return __awaiter(this, void 0, void 0, function* () {
             const query = {
                 name: 'create_user',
-                text: 'INSERT INTO "user"(about, email, fullname, nickname) VALUES ($1, $2, $3, $4)',
+                text: 'INSERT INTO users(about, email, fullname, nickname) VALUES ($1, $2, $3, $4)',
                 values: Object.values(user)
             };
             return database_1.default.sendQuery(query);
@@ -28,7 +28,7 @@ class UserModel {
             const query = {
                 name: 'update_user',
                 text: `
-                UPDATE "user" SET 
+                UPDATE users SET 
                     about= COALESCE($1, about), 
                     email= COALESCE($2, email), 
                     fullname= COALESCE($3, fullname) 
@@ -50,7 +50,7 @@ class UserModel {
                 name: '',
                 text: `
                 SELECT  about, email, fullname, nickname
-                FROM "user" u, forum 
+                FROM users u, forum 
                 WHERE forum.slug = $1
                 ${sinceExpr}
                 AND (
@@ -75,7 +75,7 @@ class UserModel {
             const query = {
                 name: `get_one_user_${full ? '1' : '2'}`,
                 text: `SELECT ${full ? 'about, email, fullname, nickname' : '"UID", nickname'} 
-                    FROM "user" WHERE nickname = $1`,
+                    FROM users WHERE nickname = $1`,
                 values: [nickname]
             };
             return database_1.default.sendQuery(query);
@@ -85,7 +85,7 @@ class UserModel {
         return __awaiter(this, void 0, void 0, function* () {
             const query = {
                 name: 'get_conflicted_user',
-                text: 'SELECT about, email, fullname, nickname FROM "user" WHERE nickname = $1 OR email = $2',
+                text: 'SELECT about, email, fullname, nickname FROM users WHERE nickname = $1 OR email = $2',
                 values: [data.nickname, data.email]
             };
             return database_1.default.sendQuery(query);

@@ -17,7 +17,7 @@ class ForumModel {
         const query: IQuery = {
             name: `get_one_forum_${full ? '1': '2'}`,
             text: `SELECT ${full ? 'posts, slug, threads, title, nickname as user': '"FID", slug'} FROM forum 
-                   ${full ? 'INNER JOIN "user" u ON forum."UID" = u."UID"': ''} 
+                   ${full ? 'INNER JOIN users u ON forum."UID" = u."UID"': ''} 
                    WHERE slug = $1`,
             values: [slug]
         };

@@ -7,7 +7,7 @@ class PostModel {
         let values = '';
         posts.forEach((p, i, arr) => {
             values += `(${p.forum}, 
-                        (SELECT "UID" FROM "user" WHERE nickname = '${p.author}'), 
+                        (SELECT "UID" FROM users WHERE nickname = '${p.author}'), 
                         ${p.thread}, 
                         ${
                             p.parent === undefined ?  `NULL, '{}'`: 
@@ -78,7 +78,7 @@ class PostModel {
                     COALESCE("ParentID", 0) as parent,
                     "ThreadID" as thread
                 FROM post p
-                INNER JOIN "user" u on u."UID" = p."AuthorID"
+                INNER JOIN users u on u."UID" = p."AuthorID"
             `;
 
         switch (filter.sort) {
