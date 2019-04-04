@@ -18,8 +18,8 @@ const routes_1 = __importDefault(require("./rest/routes"));
 const app = express_1.default();
 app.use(morgan_1.default('dev'));
 app.use(body_parser_1.default.json());
-app.use(routes_1.default);
+app.use('/api', routes_1.default);
 const port = process.env.PORT || 5000;
-app.listen(5000, () => {
+app.listen(port, () => {
     console.log(`Server listening on port ${port}!`); // tslint:disable-line
 });
