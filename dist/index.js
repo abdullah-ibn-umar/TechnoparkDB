@@ -19,6 +19,7 @@ const app = express_1.default();
 app.use(morgan_1.default('dev'));
 app.use(body_parser_1.default.json());
 app.use(routes_1.default);
-app.listen(8000, () => {
-    console.log('Server listening on port 8000!'); // tslint:disable-line
+const port = process.env.PORT || 5000;
+app.listen(5000, () => {
+    console.log(`Server listening on port ${port}!`); // tslint:disable-line
 });
