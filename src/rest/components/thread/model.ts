@@ -4,13 +4,20 @@ import { IGetForumData } from '../forum/interface';
 import { IThread, IThreadUpdate } from './interface';
 
 class ThreadModel {
+    // uniqueId = () =>  {
+    //     // Math.random should be unique because of its seeding algorithm.
+    //     // Convert it to base 36 (numbers + letters), and grab the first 9 characters
+    //     // after the decimal.
+    //     return 'slug' + Math.random().toString(36).substr(2, 9);
+    // };
+
     async create(thread: IThread) {
         const query: IQuery = {
             name: '',
             text: `INSERT INTO thread 
-                        ("ForumID", "AuthorID", created, message, slug, title) 
-                   VALUES ($1, $2, $3, $4, '${thread.slug || thread.title.toLowerCase().replace(' ', '-')}', $5) 
-                   RETURNING "TID"`,
+                        ("ForumID", "AuthorID", created, message, ${thread.slug ? `slug,`: ''} title) 
+                   VALUES ($1, $2, $3, $4, ${thread.slug ? `'${thread.slug}',`: ''} $5) 
+                       RETURNING "TID", slug`,
             values: [thread.forum, thread.author, thread.created, thread.message, thread.title]
         };
 

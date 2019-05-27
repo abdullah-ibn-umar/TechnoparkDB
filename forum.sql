@@ -41,20 +41,21 @@ COMMENT ON EXTENSION citext IS 'data type for case-insensitive character strings
 
 CREATE FUNCTION public.check_post_parent() RETURNS trigger
     LANGUAGE plpgsql
-    AS $$
-DECLARE 
-	_thread integer;
-BEGIN 
-	IF NEW."ParentID" = NULL THEN
-		RETURN NEW;
-	ELSE
-		SELECT INTO _thread "ThreadID" FROM post WHERE "PID" = NEW."ParentID";
-		IF _thread <> NEW."ThreadID" THEN 
-			RAISE EXCEPTION 'Parent post is in another thread %', NEW."ThreadID" USING ERRCODE='23505';
-		ELSE
-			RETURN NEW;
-		END IF;
-	END IF;
+AS
+$$
+DECLARE
+    _thread integer;
+BEGIN
+    IF NEW."ParentID" = NULL THEN
+        RETURN NEW;
+    ELSE
+        SELECT INTO _thread "ThreadID" FROM post WHERE "PID" = NEW."ParentID";
+        IF _thread <> NEW."ThreadID" THEN
+            RAISE EXCEPTION 'Parent post is in another thread %', NEW."ThreadID" USING ERRCODE = '23505';
+        ELSE
+            RETURN NEW;
+        END IF;
+    END IF;
 END;
 $$;
 
@@ -66,61 +67,69 @@ ALTER FUNCTION public.check_post_parent() OWNER TO jahongir;
 -- Name: get_post_full(integer); Type: FUNCTION; Schema: public; Owner: jahongir
 --
 
-CREATE FUNCTION public.get_post_full(_id integer) RETURNS TABLE(post_full json)
+CREATE FUNCTION public.get_post_full(_id integer) RETURNS TABLE
+                                                          (
+                                                              post_full json
+                                                          )
     LANGUAGE plpgsql
-    AS $$BEGIN       
-    IF EXISTS (SELECT 1 FROM post WHERE "PID" = _id) THEN
-        SELECT INTO post_full json_build_object (
-			'author',
-                json_build_object (
-                    'about', u.about,
-                    'email', u.email,
-                    'fullname', u.fullname,
-                    'nickname', u.nickname
-                ),
-            'forum',  
-                json_build_object (
-                    'posts', f.posts,
-                    'slug', f.slug,
-                    'threads', f.threads,
-                    'title', f.title,
-                    'user', u3.nickname
-                ),
-            'post', 
-                json_build_object(
-                    'author', u.nickname,
-                    'created', to_char(p.created::timestamptz at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
-                    'forum', f.slug,
-                    'id', p."PID",
-                    'isEdited', p."isEdited",
-                    'message', p.message,
-                    'parent', p."ParentID",
-                    'thread', t."TID"
-                ),
-			'thread',   
-                json_build_object (
-                    'author', u2.nickname,
-                    'created', to_char(t.created::timestamptz at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
-                    'forum', f.slug,
-                    'id', t."TID",
-                    'message', t.message,
-                    'slug', t.slug,
-                    'title', t.title,
-                    'votes', t.votes
+AS
+$$
+BEGIN
+    IF EXISTS(SELECT 1 FROM post WHERE "PID" = _id) THEN
+        SELECT INTO
+            post_full json_build_object(
+                  'author',
+                  json_build_object(
+                          'about', u.about,
+                          'email', u.email,
+                          'fullname', u.fullname,
+                          'nickname', u.nickname
+                      ),
+                  'forum',
+                  json_build_object(
+                          'posts', f.posts,
+                          'slug', f.slug,
+                          'threads', f.threads,
+                          'title', f.title,
+                          'user', u3.nickname
+                      ),
+                  'post',
+                  json_build_object(
+                          'author', u.nickname,
+                          'created', to_char(p.created::timestamptz at time zone 'UTC',
+                                             'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+                          'forum', f.slug,
+                          'id', p."PID",
+                          'isEdited', p."isEdited",
+                          'message', p.message,
+                          'parent', p."ParentID",
+                          'thread', t."TID"
+                      ),
+                  'thread',
+                  json_build_object(
+                          'author', u2.nickname,
+                          'created', to_char(t.created::timestamptz at time zone 'UTC',
+                                             'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+                          'forum', f.slug,
+                          'id', t."TID",
+                          'message', t.message,
+                          'slug', t.slug,
+                          'title', t.title,
+                          'votes', t.votes
+                    )
                 )
-            )
-        FROM post p 
-        INNER JOIN users u ON u."UID" = p."AuthorID"
-        INNER JOIN forum f ON f."FID" = p."ForumID"
-        INNER JOIN thread t ON t."TID" = p."ThreadID"
-		INNER JOIN users u2 ON u2."UID" = t."AuthorID"
-		INNER JOIN users u3 ON u3."UID" = f."UID"
+        FROM post p
+                 INNER JOIN users u ON u."UID" = p."AuthorID"
+                 INNER JOIN forum f ON f."FID" = p."ForumID"
+                 INNER JOIN thread t ON t."TID" = p."ThreadID"
+                 INNER JOIN users u2 ON u2."UID" = t."AuthorID"
+                 INNER JOIN users u3 ON u3."UID" = f."UID"
         WHERE p."PID" = _id;
         RETURN NEXT;
     ELSE
         RETURN;
     END IF;
-END 
+END
 $$;
 
 
@@ -131,38 +140,50 @@ ALTER FUNCTION public.get_post_full(_id integer) OWNER TO jahongir;
 -- Name: update_post(text, integer); Type: FUNCTION; Schema: public; Owner: jahongir
 --
 
-CREATE FUNCTION public.update_post(msg text, _id integer) RETURNS TABLE(author public.citext, created timestamp with time zone, forum public.citext, id integer, "isEdited" boolean, message text, parent integer, thread integer)
+CREATE FUNCTION public.update_post(msg text, _id integer) RETURNS TABLE
+                                                                  (
+                                                                      author     public.citext,
+                                                                      created    timestamp with time zone,
+                                                                      forum      public.citext,
+                                                                      id         integer,
+                                                                      "isEdited" boolean,
+                                                                      message    text,
+                                                                      parent     integer,
+                                                                      thread     integer
+                                                                  )
     LANGUAGE plpgsql
-    AS $$DECLARE 
-	_message text;
+AS
+$$
+DECLARE
+    _message text;
 BEGIN
-	SELECT INTO _message post.message FROM post WHERE "PID" = _id;
-	IF FOUND THEN 
-		IF msg <> _message THEN 
-			UPDATE post
-				SET message = msg, "isEdited" = true
-			WHERE "PID" = _id;
-		END IF;
-		
-		RETURN QUERY
-        SELECT
-            u."nickname" as author,
-            p.created,  
-            f."slug" as forum,
-            p."PID" as id,  
-            p."isEdited", 
-            p.message, 
-            p."ParentID" as parent,
-            t."TID" as thread
-        FROM post p
-        INNER JOIN users u ON u."UID" = p."AuthorID"
-        INNER JOIN forum f ON f."FID" = p."ForumID"
-        INNER JOIN thread t ON t."TID" = p."ThreadID"
-        WHERE "PID" = _id;
-	ELSE 
-		RETURN;
-	END IF;
-END 
+    SELECT INTO _message post.message FROM post WHERE "PID" = _id;
+    IF FOUND THEN
+        IF msg <> _message THEN
+            UPDATE post
+            SET message    = msg,
+                "isEdited" = true
+            WHERE "PID" = _id;
+        END IF;
+
+        RETURN QUERY
+            SELECT u."nickname" as author,
+                   p.created,
+                   f."slug"     as forum,
+                   p."PID"      as id,
+                   p."isEdited",
+                   p.message,
+                   p."ParentID" as parent,
+                   t."TID"      as thread
+            FROM post p
+                     INNER JOIN users u ON u."UID" = p."AuthorID"
+                     INNER JOIN forum f ON f."FID" = p."ForumID"
+                     INNER JOIN thread t ON t."TID" = p."ThreadID"
+            WHERE "PID" = _id;
+    ELSE
+        RETURN;
+    END IF;
+END
 $$;
 
 
@@ -175,11 +196,13 @@ ALTER FUNCTION public.update_post(msg text, _id integer) OWNER TO jahongir;
 
 CREATE FUNCTION public.update_post_quantity() RETURNS trigger
     LANGUAGE plpgsql
-    AS $$
-BEGIN 
-    UPDATE forum SET posts = posts + 1
-	WHERE "FID" = NEW."ForumID";
-	RETURN NULL;
+AS
+$$
+BEGIN
+    UPDATE forum
+    SET posts = posts + 1
+    WHERE "FID" = NEW."ForumID";
+    RETURN NULL;
 END;
 $$;
 
@@ -193,10 +216,12 @@ ALTER FUNCTION public.update_post_quantity() OWNER TO jahongir;
 
 CREATE FUNCTION public.update_thread_quantity() RETURNS trigger
     LANGUAGE plpgsql
-    AS $$
-BEGIN 
-    UPDATE forum SET threads = threads + 1
-	WHERE "FID" = NEW."ForumID";
+AS
+$$
+BEGIN
+    UPDATE forum
+    SET threads = threads + 1
+    WHERE "FID" = NEW."ForumID";
     RETURN NULL;
 END;
 $$;
@@ -211,10 +236,12 @@ ALTER FUNCTION public.update_thread_quantity() OWNER TO jahongir;
 
 CREATE FUNCTION public.update_thread_votes() RETURNS trigger
     LANGUAGE plpgsql
-    AS $$
-BEGIN 
-    UPDATE thread SET votes = votes + NEW.voice
-    WHERE "TID" = NEW."ThreadID"; 
+AS
+$$
+BEGIN
+    UPDATE thread
+    SET votes = votes + NEW.voice
+    WHERE "TID" = NEW."ThreadID";
     RETURN NULL;
 END;
 $$;
@@ -229,11 +256,13 @@ ALTER FUNCTION public.update_thread_votes() OWNER TO jahongir;
 
 CREATE FUNCTION public.update_thread_votes2() RETURNS trigger
     LANGUAGE plpgsql
-    AS $$
-BEGIN 
-	UPDATE thread SET votes = votes + 2 * New.voice
-	WHERE "TID" = NEW."ThreadID";
-	RETURN NULL;
+AS
+$$
+BEGIN
+    UPDATE thread
+    SET votes = votes + 2 * New.voice
+    WHERE "TID" = NEW."ThreadID";
+    RETURN NULL;
 END;
 $$;
 
@@ -247,12 +276,14 @@ ALTER FUNCTION public.update_thread_votes2() OWNER TO jahongir;
 
 CREATE FUNCTION public.update_vote(_author text, _thread integer, _voice integer) RETURNS integer
     LANGUAGE plpgsql
-    AS $$DECLARE 
-    _uid integer;
+AS
+$$
+DECLARE
+    _uid       integer;
     _old_voice integer;
-    _id integer;
-BEGIN 
-    SELECT INTO _uid "UID" FROM users WHERE nickname = _author; 
+    _id        integer;
+BEGIN
+    SELECT INTO _uid "UID" FROM users WHERE nickname = _author;
     SELECT INTO _old_voice, _id voice, "VID" FROM vote WHERE "AuthorID" = _uid AND "ThreadID" = _thread;
     IF FOUND THEN
         IF _old_voice = _voice THEN
@@ -279,17 +310,19 @@ SET default_with_oids = false;
 -- Name: forum; Type: TABLE; Schema: public; Owner: jahongir
 --
 
-CREATE TABLE public.forum (
-    "FID" integer NOT NULL,
-    "UID" integer NOT NULL,
-    slug public.citext NOT NULL,
+CREATE TABLE public.forum
+(
+    "FID"   integer       NOT NULL,
+    "UID"   integer       NOT NULL,
+    slug    public.citext NOT NULL,
     threads integer DEFAULT 0,
-    title text NOT NULL,
-    posts integer DEFAULT 0
+    title   text          NOT NULL,
+    posts   integer DEFAULT 0
 );
 
 
-ALTER TABLE public.forum OWNER TO jahongir;
+ALTER TABLE public.forum
+    OWNER TO jahongir;
 
 --
 -- TOC entry 200 (class 1259 OID 24644)
@@ -304,7 +337,8 @@ CREATE SEQUENCE public.fid
     CACHE 1;
 
 
-ALTER TABLE public.fid OWNER TO jahongir;
+ALTER TABLE public.fid
+    OWNER TO jahongir;
 
 --
 -- TOC entry 3071 (class 0 OID 0)
@@ -320,20 +354,22 @@ ALTER SEQUENCE public.fid OWNED BY public.forum."FID";
 -- Name: post; Type: TABLE; Schema: public; Owner: jahongir
 --
 
-CREATE TABLE public.post (
-    "PID" integer NOT NULL,
-    "ForumID" integer NOT NULL,
+CREATE TABLE public.post
+(
+    "PID"      integer NOT NULL,
+    "ForumID"  integer NOT NULL,
     "AuthorID" integer NOT NULL,
     "ThreadID" integer NOT NULL,
     "ParentID" integer,
-    "isEdited" boolean DEFAULT false,
-    message text NOT NULL,
-    created timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-    path integer[] DEFAULT '{}'::integer[]
+    "isEdited" boolean                  DEFAULT false,
+    message    text    NOT NULL,
+    created    timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    path       integer[]                DEFAULT '{}'::integer[]
 );
 
 
-ALTER TABLE public.post OWNER TO jahongir;
+ALTER TABLE public.post
+    OWNER TO jahongir;
 
 --
 -- TOC entry 204 (class 1259 OID 24696)
@@ -348,7 +384,8 @@ CREATE SEQUENCE public.pid
     CACHE 1;
 
 
-ALTER TABLE public.pid OWNER TO jahongir;
+ALTER TABLE public.pid
+    OWNER TO jahongir;
 
 --
 -- TOC entry 3072 (class 0 OID 0)
@@ -364,19 +401,21 @@ ALTER SEQUENCE public.pid OWNED BY public.post."PID";
 -- Name: thread; Type: TABLE; Schema: public; Owner: jahongir
 --
 
-CREATE TABLE public.thread (
-    "TID" integer NOT NULL,
-    "ForumID" integer NOT NULL,
+CREATE TABLE public.thread
+(
+    "TID"      integer NOT NULL,
+    "ForumID"  integer NOT NULL,
     "AuthorID" integer NOT NULL,
-    created timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-    slug public.citext,
-    message text NOT NULL,
-    title text NOT NULL,
-    votes integer DEFAULT 0
+    created    timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    slug       public.citext,
+    message    text    NOT NULL,
+    title      text    NOT NULL,
+    votes      integer                  DEFAULT 0
 );
 
 
-ALTER TABLE public.thread OWNER TO jahongir;
+ALTER TABLE public.thread
+    OWNER TO jahongir;
 
 --
 -- TOC entry 202 (class 1259 OID 24667)
@@ -391,7 +430,8 @@ CREATE SEQUENCE public.tid
     CACHE 1;
 
 
-ALTER TABLE public.tid OWNER TO jahongir;
+ALTER TABLE public.tid
+    OWNER TO jahongir;
 
 --
 -- TOC entry 3073 (class 0 OID 0)
@@ -407,16 +447,18 @@ ALTER SEQUENCE public.tid OWNED BY public.thread."TID";
 -- Name: users; Type: TABLE; Schema: public; Owner: jahongir
 --
 
-CREATE TABLE public.users (
-    "UID" integer NOT NULL,
-    about text NOT NULL,
-    email public.citext NOT NULL,
-    fullname text NOT NULL,
+CREATE TABLE public.users
+(
+    "UID"    integer       NOT NULL,
+    about    text          NOT NULL,
+    email    public.citext NOT NULL,
+    fullname text          NOT NULL,
     nickname public.citext NOT NULL
 );
 
 
-ALTER TABLE public.users OWNER TO jahongir;
+ALTER TABLE public.users
+    OWNER TO jahongir;
 
 --
 -- TOC entry 198 (class 1259 OID 24601)
@@ -431,7 +473,8 @@ CREATE SEQUENCE public.uid
     CACHE 1;
 
 
-ALTER TABLE public.uid OWNER TO jahongir;
+ALTER TABLE public.uid
+    OWNER TO jahongir;
 
 --
 -- TOC entry 3074 (class 0 OID 0)
@@ -447,15 +490,17 @@ ALTER SEQUENCE public.uid OWNED BY public.users."UID";
 -- Name: vote; Type: TABLE; Schema: public; Owner: jahongir
 --
 
-CREATE TABLE public.vote (
-    "VID" integer NOT NULL,
+CREATE TABLE public.vote
+(
+    "VID"      integer NOT NULL,
     "AuthorID" integer NOT NULL,
     "ThreadID" integer NOT NULL,
-    voice integer NOT NULL
+    voice      integer NOT NULL
 );
 
 
-ALTER TABLE public.vote OWNER TO jahongir;
+ALTER TABLE public.vote
+    OWNER TO jahongir;
 
 --
 -- TOC entry 206 (class 1259 OID 24792)
@@ -470,7 +515,8 @@ CREATE SEQUENCE public.vid
     CACHE 1;
 
 
-ALTER TABLE public.vid OWNER TO jahongir;
+ALTER TABLE public.vid
+    OWNER TO jahongir;
 
 --
 -- TOC entry 3075 (class 0 OID 0)
@@ -486,7 +532,8 @@ ALTER SEQUENCE public.vid OWNED BY public.vote."VID";
 -- Name: forum FID; Type: DEFAULT; Schema: public; Owner: jahongir
 --
 
-ALTER TABLE ONLY public.forum ALTER COLUMN "FID" SET DEFAULT nextval('public.fid'::regclass);
+ALTER TABLE ONLY public.forum
+    ALTER COLUMN "FID" SET DEFAULT nextval('public.fid'::regclass);
 
 
 --
@@ -494,7 +541,8 @@ ALTER TABLE ONLY public.forum ALTER COLUMN "FID" SET DEFAULT nextval('public.fid
 -- Name: post PID; Type: DEFAULT; Schema: public; Owner: jahongir
 --
 
-ALTER TABLE ONLY public.post ALTER COLUMN "PID" SET DEFAULT nextval('public.pid'::regclass);
+ALTER TABLE ONLY public.post
+    ALTER COLUMN "PID" SET DEFAULT nextval('public.pid'::regclass);
 
 
 --
@@ -502,7 +550,8 @@ ALTER TABLE ONLY public.post ALTER COLUMN "PID" SET DEFAULT nextval('public.pid'
 -- Name: thread TID; Type: DEFAULT; Schema: public; Owner: jahongir
 --
 
-ALTER TABLE ONLY public.thread ALTER COLUMN "TID" SET DEFAULT nextval('public.tid'::regclass);
+ALTER TABLE ONLY public.thread
+    ALTER COLUMN "TID" SET DEFAULT nextval('public.tid'::regclass);
 
 
 --
@@ -510,7 +559,8 @@ ALTER TABLE ONLY public.thread ALTER COLUMN "TID" SET DEFAULT nextval('public.ti
 -- Name: users UID; Type: DEFAULT; Schema: public; Owner: jahongir
 --
 
-ALTER TABLE ONLY public.users ALTER COLUMN "UID" SET DEFAULT nextval('public.uid'::regclass);
+ALTER TABLE ONLY public.users
+    ALTER COLUMN "UID" SET DEFAULT nextval('public.uid'::regclass);
 
 
 --
@@ -518,7 +568,8 @@ ALTER TABLE ONLY public.users ALTER COLUMN "UID" SET DEFAULT nextval('public.uid
 -- Name: vote VID; Type: DEFAULT; Schema: public; Owner: jahongir
 --
 
-ALTER TABLE ONLY public.vote ALTER COLUMN "VID" SET DEFAULT nextval('public.vid'::regclass);
+ALTER TABLE ONLY public.vote
+    ALTER COLUMN "VID" SET DEFAULT nextval('public.vid'::regclass);
 
 
 --
@@ -606,7 +657,11 @@ CREATE UNIQUE INDEX index_on_threads_slug ON public.thread USING btree (slug);
 -- Name: post before_insert; Type: TRIGGER; Schema: public; Owner: jahongir
 --
 
-CREATE TRIGGER before_insert BEFORE INSERT ON public.post FOR EACH ROW EXECUTE PROCEDURE public.check_post_parent();
+CREATE TRIGGER before_insert
+    BEFORE INSERT
+    ON public.post
+    FOR EACH ROW
+EXECUTE PROCEDURE public.check_post_parent();
 
 
 --
@@ -614,7 +669,11 @@ CREATE TRIGGER before_insert BEFORE INSERT ON public.post FOR EACH ROW EXECUTE P
 -- Name: vote insert_vote; Type: TRIGGER; Schema: public; Owner: jahongir
 --
 
-CREATE TRIGGER insert_vote AFTER INSERT ON public.vote FOR EACH ROW EXECUTE PROCEDURE public.update_thread_votes();
+CREATE TRIGGER insert_vote
+    AFTER INSERT
+    ON public.vote
+    FOR EACH ROW
+EXECUTE PROCEDURE public.update_thread_votes();
 
 
 --
@@ -622,7 +681,11 @@ CREATE TRIGGER insert_vote AFTER INSERT ON public.vote FOR EACH ROW EXECUTE PROC
 -- Name: post update_forum_post; Type: TRIGGER; Schema: public; Owner: jahongir
 --
 
-CREATE TRIGGER update_forum_post AFTER INSERT ON public.post FOR EACH ROW EXECUTE PROCEDURE public.update_post_quantity();
+CREATE TRIGGER update_forum_post
+    AFTER INSERT
+    ON public.post
+    FOR EACH ROW
+EXECUTE PROCEDURE public.update_post_quantity();
 
 
 --
@@ -630,7 +693,11 @@ CREATE TRIGGER update_forum_post AFTER INSERT ON public.post FOR EACH ROW EXECUT
 -- Name: thread update_forum_thread; Type: TRIGGER; Schema: public; Owner: jahongir
 --
 
-CREATE TRIGGER update_forum_thread AFTER INSERT ON public.thread FOR EACH ROW EXECUTE PROCEDURE public.update_thread_quantity();
+CREATE TRIGGER update_forum_thread
+    AFTER INSERT
+    ON public.thread
+    FOR EACH ROW
+EXECUTE PROCEDURE public.update_thread_quantity();
 
 
 --
@@ -638,7 +705,11 @@ CREATE TRIGGER update_forum_thread AFTER INSERT ON public.thread FOR EACH ROW EX
 -- Name: vote update_vote; Type: TRIGGER; Schema: public; Owner: jahongir
 --
 
-CREATE TRIGGER update_vote AFTER UPDATE ON public.vote FOR EACH ROW EXECUTE PROCEDURE public.update_thread_votes2();
+CREATE TRIGGER update_vote
+    AFTER UPDATE
+    ON public.vote
+    FOR EACH ROW
+EXECUTE PROCEDURE public.update_thread_votes2();
 
 
 --
@@ -647,7 +718,7 @@ CREATE TRIGGER update_vote AFTER UPDATE ON public.vote FOR EACH ROW EXECUTE PROC
 --
 
 ALTER TABLE ONLY public.forum
-    ADD CONSTRAINT "forum_UID_fkey" FOREIGN KEY ("UID") REFERENCES public.users("UID");
+    ADD CONSTRAINT "forum_UID_fkey" FOREIGN KEY ("UID") REFERENCES public.users ("UID");
 
 
 --
@@ -656,7 +727,7 @@ ALTER TABLE ONLY public.forum
 --
 
 ALTER TABLE ONLY public.post
-    ADD CONSTRAINT parent_id FOREIGN KEY ("ParentID") REFERENCES public.post("PID");
+    ADD CONSTRAINT parent_id FOREIGN KEY ("ParentID") REFERENCES public.post ("PID");
 
 
 --
@@ -665,7 +736,7 @@ ALTER TABLE ONLY public.post
 --
 
 ALTER TABLE ONLY public.post
-    ADD CONSTRAINT "post_AuthorID_fkey" FOREIGN KEY ("AuthorID") REFERENCES public.users("UID");
+    ADD CONSTRAINT "post_AuthorID_fkey" FOREIGN KEY ("AuthorID") REFERENCES public.users ("UID");
 
 
 --
@@ -674,7 +745,7 @@ ALTER TABLE ONLY public.post
 --
 
 ALTER TABLE ONLY public.post
-    ADD CONSTRAINT "post_ForumID_fkey" FOREIGN KEY ("ForumID") REFERENCES public.forum("FID");
+    ADD CONSTRAINT "post_ForumID_fkey" FOREIGN KEY ("ForumID") REFERENCES public.forum ("FID");
 
 
 --
@@ -683,7 +754,7 @@ ALTER TABLE ONLY public.post
 --
 
 ALTER TABLE ONLY public.post
-    ADD CONSTRAINT "post_ThreadID_fkey" FOREIGN KEY ("ThreadID") REFERENCES public.thread("TID");
+    ADD CONSTRAINT "post_ThreadID_fkey" FOREIGN KEY ("ThreadID") REFERENCES public.thread ("TID");
 
 
 --
@@ -692,7 +763,7 @@ ALTER TABLE ONLY public.post
 --
 
 ALTER TABLE ONLY public.thread
-    ADD CONSTRAINT "thread_AuthorID_fkey" FOREIGN KEY ("AuthorID") REFERENCES public.users("UID");
+    ADD CONSTRAINT "thread_AuthorID_fkey" FOREIGN KEY ("AuthorID") REFERENCES public.users ("UID");
 
 
 --
@@ -701,7 +772,7 @@ ALTER TABLE ONLY public.thread
 --
 
 ALTER TABLE ONLY public.thread
-    ADD CONSTRAINT "thread_ForumID_fkey" FOREIGN KEY ("ForumID") REFERENCES public.forum("FID");
+    ADD CONSTRAINT "thread_ForumID_fkey" FOREIGN KEY ("ForumID") REFERENCES public.forum ("FID");
 
 
 --
@@ -710,7 +781,7 @@ ALTER TABLE ONLY public.thread
 --
 
 ALTER TABLE ONLY public.vote
-    ADD CONSTRAINT "vote_AuthorID_fkey" FOREIGN KEY ("AuthorID") REFERENCES public.users("UID");
+    ADD CONSTRAINT "vote_AuthorID_fkey" FOREIGN KEY ("AuthorID") REFERENCES public.users ("UID");
 
 
 --
@@ -719,7 +790,7 @@ ALTER TABLE ONLY public.vote
 --
 
 ALTER TABLE ONLY public.vote
-    ADD CONSTRAINT "vote_ThreadID_fkey" FOREIGN KEY ("ThreadID") REFERENCES public.thread("TID");
+    ADD CONSTRAINT "vote_ThreadID_fkey" FOREIGN KEY ("ThreadID") REFERENCES public.thread ("TID");
 
 
 -- Completed on 2019-04-04 06:38:04 MSK

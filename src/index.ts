@@ -6,8 +6,13 @@ import ('./config/database');
 import router from './rest/routes';
 
 const app: express.Application = express();
+const env = process.env.NODE_ENV;
 
-app.use(morgan('dev'));
+if (env === 'production') {
+    console.log = () => null;
+} else {
+    app.use(morgan('dev'));
+}
 app.use(bodyParser.json());
 app.use('/api', router);
 
