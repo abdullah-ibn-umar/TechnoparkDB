@@ -5,7 +5,7 @@ import { IError } from '../base/interfaces';
 import { IThreadData } from '../thread/interface';
 
 class PostController {
-    create = async (req: e.Request, res: e.Response, data: IThreadData) => {
+    create = async (req: e.Request, res: e.Response) => {
         let posts: IPost[] = [];
         const _posts: IPost[] = req.body;
 
@@ -13,9 +13,9 @@ class PostController {
             const post: IPost = {
                 author: p.author,
                 message: p.message,
-                forum: data.forumId,
+                forum: p.forum,
                 parent: p.parent,
-                thread: data.threadId
+                thread: p.thread
             };
             posts.push(post);
         });
@@ -38,7 +38,6 @@ class PostController {
         rq.data.rows.forEach((p, i) => {
             posts[i].created = p.created;
             posts[i].id = p.id;
-            posts[i].forum = data.forum;
         });
 
         res.status(201).json(posts);

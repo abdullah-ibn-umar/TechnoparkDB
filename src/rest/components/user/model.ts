@@ -19,9 +19,9 @@ class UserModel {
             name: 'update_user',
             text: `
                 UPDATE users SET 
-                    about= COALESCE($1, about), 
-                    email= COALESCE($2, email), 
-                    fullname= COALESCE($3, fullname) 
+                    about = COALESCE($1, about), 
+                    email = COALESCE($2, email), 
+                    fullname = COALESCE($3, fullname) 
                 WHERE nickname = $4 
                 RETURNING *  
             `,
@@ -40,19 +40,13 @@ class UserModel {
         const query: IQuery = {
             name: '',
             text: `
-                SELECT  about, email, fullname, nickname
-                FROM users u, forum 
-                WHERE forum.slug = $1
-                ${sinceExpr}
-                AND (
-                    u."UID" in (
-                        SELECT "AuthorID" FROM post WHERE "ForumID" = forum."FID"
-                    )
-                    OR
-                    u."UID" in (
-                        SELECT "AuthorID" FROM thread WHERE "ForumID" = forum."FID"
-                    )
+                SELECT about, email, fullname, nickname
+                FROM users
+                WHERE nickname IN (
+                  SELECT author FROM user_posts
+                  WHERE forum = $1
                 )
+                ${sinceExpr}
                 ORDER BY nickname COLLATE "C" ${data.desc ? 'DESC' : 'ASC'}
                 ${data.limit ? `LIMIT ${data.limit}`: ''}
             `,
@@ -64,7 +58,7 @@ class UserModel {
     async getOne(nickname: string, full: boolean = true) {
         const query: IQuery = {
             name: `get_one_user_${full ? '1': '2'}`,
-            text: `SELECT ${full ? 'about, email, fullname, nickname': '"UID", nickname'} 
+            text: `SELECT ${full ? 'about, email, fullname, nickname': 'nickname'} 
                     FROM users WHERE nickname = $1`,
             values: [nickname]
         };

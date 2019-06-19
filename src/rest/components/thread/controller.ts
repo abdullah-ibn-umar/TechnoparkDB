@@ -10,15 +10,10 @@ import { IError, IReturn, IReturnQuery } from '../base/interfaces';
 
 class ThreadController {
     create = async (req: e.Request, res: e.Response, forum: IForum) => {
-        const author = req.body.author;
-        const user = await userController.getUser(req, res, author);
-        if (user.error) return;
-
-        const forumId = forum.id || 0;
         const thread: IThread = {
-            author: user.data['UID'],
+            author: req.body.author,
             created: req.body.created,
-            forum: forumId,
+            forum: forum.slug,
             message: req.body.message,
             slug: req.body.slug,
             title: req.body.title,
@@ -41,9 +36,8 @@ class ThreadController {
             return;
         }
 
-        thread.id = rq.data.rows[0]['TID'];
+        thread.id = rq.data.rows[0]['tid'];
         thread.forum = forum.slug;
-        thread.author = author;
         res.status(201).json(thread);
     };
 
@@ -86,15 +80,7 @@ class ThreadController {
     };
 
     createPosts = async (req: e.Request, res: e.Response) => {
-        const r: IReturn<any> = await this.getIdentifier(req, res);
-        if (r.error) return;
-
-        const data: IThreadData = {
-            threadId: r.data['id'],
-            forumId: r.data['forum_id'],
-            forum: r.data['forum']
-        };
-        await postController.create(req, res, data);
+        await postController.create(req, res);
     };
 
     getPosts = async (req: e.Request, res: e.Response) => {

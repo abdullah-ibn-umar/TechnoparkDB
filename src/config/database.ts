@@ -7,9 +7,9 @@ class Database {
         this.pool = new Pool({
             host: 'localhost',
             port: 5432,
-            database: '',
-            user: '',
-            password: '',
+            database: 'forum',
+            user: 'jahongir',
+            password: 'Password1234',
             max: 20
         });
     }

@@ -1,10 +1,9 @@
 export interface IForum {
-    id?: number;
     posts?: number;
     slug: string;
     threads?: number;
     title: string;
-    user: string|number;
+    author: string|number;
 }
 
 export interface IGetForumData {

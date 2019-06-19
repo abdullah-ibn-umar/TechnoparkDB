@@ -7,11 +7,11 @@ class PostModel {
         let values = '';
         posts.forEach((p, i, arr) => {
             values += `(${p.forum}, 
-                        (SELECT "UID" FROM users WHERE nickname = '${p.author}'), 
+                        ${p.author}', 
                         ${p.thread}, 
                         ${
                             p.parent === undefined ?  `NULL, '{}'`: 
-                            `${p.parent}, (SELECT path FROM post WHERE "PID" = ${p.parent}) || ${p.parent}`
+                            `${p.parent}, (SELECT path FROM post WHERE pid = ${p.parent}) || ${p.parent}`
                         }, 
                         '${p.message}'
                     )`;
@@ -24,10 +24,10 @@ class PostModel {
             name: '',
             text: `
                 INSERT INTO 
-                    post("ForumID", "AuthorID", "ThreadID", "ParentID", path, message)
+                    post(forum, author, thread, parent_id, path, message)
                 VALUES ${values}
                 RETURNING 
-                    "PID" as id,
+                    pid as id,
                     created 
             `,
             values: []
@@ -39,7 +39,7 @@ class PostModel {
         let sinceExpr = '';
         const compSym = filter.desc ? '<': '>';
         const desc = filter.desc ? 'DESC' : 'ASC';
-        const newPath = '(path || "PID")';
+        const newPath = '(path || pid)';
 
         if (filter.since) {
             switch (filter.sort) {
@@ -47,7 +47,7 @@ class PostModel {
                     sinceExpr = `
                         AND ${newPath} ${compSym} (
                             SELECT ${newPath} FROM post
-                            WHERE "PID" = ${filter.since}
+                            WHERE pid = ${filter.since}
                         )
                     `;
                 } break;
@@ -55,30 +55,29 @@ class PostModel {
                     sinceExpr = `
                         AND ${newPath} ${compSym} (
                             SELECT ${newPath}${filter.desc ?'[1:1]': ''}  FROM post
-                            WHERE "PID" = ${filter.since}
+                            WHERE pid = ${filter.since}
                         )
                     `;
                 } break;
                 default: {
-                    sinceExpr = `AND "PID" ${compSym} '${filter.since}'`;
+                    sinceExpr = `AND pid ${compSym} '${filter.since}'`;
                 }
             }
         }
 
         const limit = `LIMIT $3`;
-        const where = `WHERE "ThreadID" = $2`;
+        const where = `WHERE thread = $2`;
         let select = `
                 SELECT 
-                    u."nickname" as author,
-                    p.created,  
+                    author,
+                    created,  
                     $1 as forum,
-                    "PID" as id,  
-                    "isEdited", 
-                    p.message, 
-                    COALESCE("ParentID", 0) as parent,
-                    "ThreadID" as thread
-                FROM post p
-                INNER JOIN users u on u."UID" = p."AuthorID"
+                    pid as id,  
+                    is_edited as "isEdited", 
+                    message, 
+                    COALESCE(parent_id, 0) as parent,
+                    thread
+                FROM post 
             `;
 
         switch (filter.sort) {
@@ -93,9 +92,9 @@ class PostModel {
             case 'parent_tree': {
                 select =  `
                     WITH parents AS (
-                        SELECT "PID" as id FROM post 
+                        SELECT pid as id FROM post 
                         ${where}
-                        AND "ParentID" IS NULL
+                        AND parent_id IS NULL
                         ${sinceExpr}
                         ORDER BY id ${desc}
                         ${limit}
@@ -109,7 +108,7 @@ class PostModel {
                 select += `
                     ${where}
                     ${sinceExpr}   
-                    ORDER BY created ${desc}, "PID" ${desc} 
+                    ORDER BY created ${desc}, pid ${desc} 
                     ${limit}
                 `;
             }
