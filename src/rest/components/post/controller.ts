@@ -1,11 +1,12 @@
 import e from 'express';
 import model  from './model';
+import userController   from '../user/controller';
 import { IPost, IPostFilter, IPostUpdate } from './interface';
 import { IError } from '../base/interfaces';
 import { IThreadData } from '../thread/interface';
 
 class PostController {
-    create = async (req: e.Request, res: e.Response) => {
+    create = async (req: e.Request, res: e.Response, data: IThreadData) => {
         let posts: IPost[] = [];
         const _posts: IPost[] = req.body;
 
@@ -13,9 +14,9 @@ class PostController {
             const post: IPost = {
                 author: p.author,
                 message: p.message,
-                forum: p.forum,
+                forum: data.forum,
                 parent: p.parent,
-                thread: p.thread
+                thread: data.threadId
             };
             posts.push(post);
         });
@@ -27,7 +28,7 @@ class PostController {
 
         const rq = await model.insertSeveral(posts);
         if (rq.isError) {
-            if (rq.message.includes('AuthorID')) {
+            if (rq.message.includes('author')) {
                 res.status(404).json(<IError>{ message: `Author not found` });
             } else {
                 res.status(409).json(<IError>{ message: rq.message });

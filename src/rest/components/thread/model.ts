@@ -45,6 +45,7 @@ class ThreadModel {
                     t.title,
                     votes
                    FROM thread t
+                   WHERE forum = $1
                    ${sinceExpr}  
                    ORDER BY created
                    ${thread.desc ? 'DESC' : 'ASC'}

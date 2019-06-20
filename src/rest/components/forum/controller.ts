@@ -8,10 +8,14 @@ import { IError, IReturn, IReturnQuery } from '../base/interfaces';
 
 class ForumController {
     create = async (req: e.Request, res: e.Response) => {
+        const author = req.body.user;
+        const user = await userController.getUser(req, res, author);
+        if (user.error) return;
+
         const forum: IForum = {
             slug: req.body.slug,
             title: req.body.title,
-            author: req.body.user,
+            user: user.data.nickname,
             posts: 0,
             threads: 0
         };
@@ -28,6 +32,7 @@ class ForumController {
                 res.status(409).json(confRes.data.rows[0]);
                 return;
             }
+
             res.status(400).json(<IError>{ message: rq.message });
             return;
         }
@@ -112,7 +117,7 @@ class ForumController {
         const forum: IForum = {
             slug: rf.data.rows[0]['slug'],
             title: '',
-            author: ''
+            user: ''
         };
         await threadController.create(req, res, forum);
     };

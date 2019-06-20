@@ -6,13 +6,13 @@ class PostModel {
     async insertSeveral(posts: IPost[]) {
         let values = '';
         posts.forEach((p, i, arr) => {
-            values += `(${p.forum}, 
-                        ${p.author}', 
-                        ${p.thread}, 
+            values += `('${p.forum}', 
+                        (SELECT nickname FROM users WHERE nickname = '${p.author}'), 
+                        ${p.thread},
                         ${
                             p.parent === undefined ?  `NULL, '{}'`: 
                             `${p.parent}, (SELECT path FROM post WHERE pid = ${p.parent}) || ${p.parent}`
-                        }, 
+                        },
                         '${p.message}'
                     )`;
             if (!Object.is(arr.length - 1, i)) {
@@ -28,7 +28,7 @@ class PostModel {
                 VALUES ${values}
                 RETURNING 
                     pid as id,
-                    created 
+                    created
             `,
             values: []
         };
@@ -39,22 +39,21 @@ class PostModel {
         let sinceExpr = '';
         const compSym = filter.desc ? '<': '>';
         const desc = filter.desc ? 'DESC' : 'ASC';
-        const newPath = '(path || pid)';
 
         if (filter.since) {
             switch (filter.sort) {
                 case 'tree': {
                     sinceExpr = `
-                        AND ${newPath} ${compSym} (
-                            SELECT ${newPath} FROM post
+                        AND path ${compSym} (
+                            SELECT path FROM post
                             WHERE pid = ${filter.since}
                         )
                     `;
                 } break;
                 case 'parent_tree': {
                     sinceExpr = `
-                        AND ${newPath} ${compSym} (
-                            SELECT ${newPath}${filter.desc ?'[1:1]': ''}  FROM post
+                        AND path ${compSym} (
+                            SELECT path ${filter.desc ?'[1:1]': ''}  FROM post
                             WHERE pid = ${filter.since}
                         )
                     `;
@@ -65,13 +64,13 @@ class PostModel {
             }
         }
 
-        const limit = `LIMIT $3`;
-        const where = `WHERE thread = $2`;
+        const limit = `LIMIT $2`;
+        const where = `WHERE thread = $1`;
         let select = `
                 SELECT 
                     author,
                     created,  
-                    $1 as forum,
+                    forum,
                     pid as id,  
                     is_edited as "isEdited", 
                     message, 
@@ -85,7 +84,7 @@ class PostModel {
                 select += `
                     ${where}
                     ${sinceExpr}   
-                    ORDER BY ${newPath} ${desc}
+                    ORDER BY path ${desc}
                     ${limit}
                 `;
             } break;
@@ -100,8 +99,8 @@ class PostModel {
                         ${limit}
                     )
                 ` + select + `
-                    WHERE  ${newPath}[1] IN (SELECT id FROM parents)
-                    ORDER BY ${newPath}[1] ${desc}, ${newPath} 
+                    WHERE root IN (SELECT id FROM parents)
+                    ORDER BY root ${desc}, path
                 `;
             } break;
             default: {
@@ -117,7 +116,7 @@ class PostModel {
         const query: IQuery = {
             name: '',
             text: select,
-            values: [filter.forum, filter.threadId, filter.limit]
+            values: [filter.threadId, filter.limit]
         };
 
         return db.sendQuery(query);
@@ -127,7 +126,7 @@ class PostModel {
         const query: IQuery = {
             name: 'update_post',
             text: `
-                    SELECT author, created, forum, id, "isEdited", message, parent, thread
+                    SELECT author, created, forum, id, is_edited as "isEdited", message, parent, thread
                     FROM update_post($1, $2)
                   `,
             values: [post.message, post.id]

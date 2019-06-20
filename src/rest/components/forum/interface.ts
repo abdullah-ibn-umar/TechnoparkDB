@@ -3,7 +3,7 @@ export interface IForum {
     slug: string;
     threads?: number;
     title: string;
-    author: string|number;
+    user: string|number;
 }
 
 export interface IGetForumData {

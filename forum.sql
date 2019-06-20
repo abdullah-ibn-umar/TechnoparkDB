@@ -80,26 +80,26 @@ BEGIN
                                       'slug', f.slug,
                                       'threads', f.threads,
                                       'title', f.title,
-                                      'user', u3.nickname
+                                      'user', f.author
                                   ),
                               'post',
                               json_build_object(
-                                      'author', u.nickname,
+                                      'author', p.author,
                                       'created', to_char(p.created::timestamptz at time zone 'UTC',
                                                          'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
-                                      'forum', f.slug,
+                                      'forum', p.forum,
                                       'id', p.pid,
                                       'isEdited', p.is_edited,
                                       'message', p.message,
                                       'parent', p.parent_id,
-                                      'thread', t.tid
+                                      'thread', p.thread
                                   ),
                               'thread',
                               json_build_object(
-                                      'author', u2.nickname,
+                                      'author', t.author,
                                       'created', to_char(t.created::timestamptz at time zone 'UTC',
                                                          'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
-                                      'forum', f.slug,
+                                      'forum', t.forum,
                                       'id', t.tid,
                                       'message', t.message,
                                       'slug', t.slug,
@@ -107,13 +107,10 @@ BEGIN
                                       'votes', t.votes
                                   )
                           )
-        FROM post p
-                 INNER JOIN users u  ON u.nickname = p.author
-                 INNER JOIN forum f  ON f.slug = p.forum
-                 INNER JOIN thread t ON t.tid = p.thread
-                 INNER JOIN users u2 ON u2.nickname = t.author
-                 INNER JOIN users u3 ON u3.nickname = f.author
-        WHERE p.pid = _id;
+        FROM post p, users u, thread t, forum f WHERE p.pid = _id
+                                                  AND p.author = u.nickname
+                                                  AND p.thread = t.tid
+                                                  AND p.forum = f.slug;
         RETURN NEXT;
     ELSE
         RETURN;
@@ -144,25 +141,21 @@ BEGIN
         END IF;
 
         RETURN QUERY
-            SELECT u.nickname as author,
-                   p.created,
-                   f.slug as forum,
-                   p.pid as id,
-                   p.is_edited,
-                   p.message,
-                   p.parent_id as parent,
-                   t.tid       as thread
-            FROM post p
-                     INNER JOIN users u  ON u.nickname = p.author
-                     INNER JOIN forum f  ON f.fid = p.forum
-                     INNER JOIN thread t ON t.tid = p.thread
+            SELECT post.author,
+                   post.created,
+                   post.forum,
+                   post.pid as id,
+                   post.is_edited,
+                   post.message,
+                   post.parent_id as parent,
+                   post.thread
+            FROM post
             WHERE pid = _id;
     ELSE
         RETURN;
     END IF;
 END
 $$;
-
 
 ALTER FUNCTION public.update_post(msg text, _id integer) OWNER TO jahongir;
 
@@ -177,6 +170,17 @@ BEGIN
     UPDATE forum
     SET posts = posts + 1
     WHERE slug = NEW.forum;
+
+    INSERT INTO user_posts (author, forum)
+    SELECT NEW.author, NEW.forum
+    WHERE NOT EXISTS (
+            SELECT 1
+            FROM user_posts
+            WHERE author = NEW.author
+              AND forum = NEW.forum
+            LIMIT 1
+        );
+
     RETURN NULL;
 END;
 $$;
@@ -195,7 +199,7 @@ BEGIN
     UPDATE forum
     SET threads = threads + 1
     WHERE slug = NEW.forum;
--- --
+
     INSERT INTO user_posts (author, forum)
     SELECT NEW.author, NEW.forum
     WHERE NOT EXISTS (
@@ -205,7 +209,7 @@ BEGIN
               AND forum = NEW.forum
             LIMIT 1
         );
--- --
+
     RETURN NULL;
 END;
 $$;
@@ -257,21 +261,20 @@ CREATE FUNCTION public.update_vote(_author text, _thread integer, _voice integer
     LANGUAGE plpgsql
 AS $$
 DECLARE
-    _uid       integer;
-    _old_voice integer;
     _id        integer;
+    _old_voice integer;
 BEGIN
-    SELECT INTO _old_voice, _id voice, vid FROM vote WHERE author = _author AND thread = _thread;
+    SELECT voice, vid INTO _old_voice, _id FROM public.vote WHERE author = _author AND thread = _thread;
     IF FOUND THEN
         IF _old_voice = _voice THEN
             RETURN 0;
         ELSE
-            UPDATE vote SET voice = _voice WHERE vid = _id;
+            UPDATE public.vote SET voice = _voice WHERE vid = _id;
             RETURN 2 * _voice;
         END IF;
     ELSE
-        INSERT INTO vote(author, thread, voice)
-        VALUES (_uid, _thread, _voice);
+        INSERT INTO public.vote(author, thread, voice)
+        VALUES (_author, _thread, _voice);
         RETURN _voice;
     END IF;
 END;
@@ -317,7 +320,7 @@ ALTER TABLE public.forum OWNER TO jahongir;
 --
 
 CREATE TABLE public.thread (
-                               tid integer NOT NULL PRIMARY KEY,
+                               tid serial NOT NULL PRIMARY KEY,
                                forum public.citext NOT NULL REFERENCES public.forum(slug),
                                author public.citext NOT NULL REFERENCES public.users(nickname),
                                created timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
@@ -355,11 +358,12 @@ ALTER SEQUENCE public.tid OWNED BY public.thread.tid;
 --
 
 CREATE TABLE public.post (
-                             pid integer NOT NULL PRIMARY KEY,
+                             pid serial NOT NULL PRIMARY KEY,
+                             root  integer NOT NULL DEFAULT 0,
                              forum public.citext NOT NULL REFERENCES public.forum(slug),
                              author public.citext NOT NULL REFERENCES public.users(nickname),
                              thread integer NOT NULL REFERENCES public.thread(tid),
-                             parent_id integer,
+                             parent_id integer REFERENCES public.post (pid),
                              is_edited boolean DEFAULT false,
                              message text NOT NULL,
                              created timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
@@ -388,6 +392,20 @@ ALTER TABLE public.pid OWNER TO jahongir;
 
 ALTER SEQUENCE public.pid OWNED BY public.post.pid;
 
+CREATE FUNCTION public.new_post() RETURNS trigger AS
+$$
+BEGIN
+    NEW.path = NEW.path || (SELECT currval('pid'))::INTEGER;
+    NEW.root = NEW.path[1];
+    RETURN NEW;
+END;
+$$
+LANGUAGE plpgsql;
+
+
+CREATE TRIGGER new_post BEFORE INSERT ON public.post
+    FOR EACH ROW EXECUTE PROCEDURE public.new_post();
+
 --
 -- Name: user_posts; Type: TABLE; Schema: public; Owner: jahongir
 --
@@ -405,7 +423,7 @@ ALTER TABLE public.user_posts OWNER TO jahongir;
 --
 
 CREATE TABLE public.vote (
-                             vid integer NOT NULL PRIMARY KEY,
+                             vid serial NOT NULL PRIMARY KEY,
                              author public.citext NOT NULL REFERENCES public.users(nickname),
                              thread integer NOT NULL REFERENCES public.thread(tid),
                              voice integer NOT NULL
@@ -446,7 +464,7 @@ ALTER TABLE ONLY public.post ALTER COLUMN pid SET DEFAULT nextval('public.pid'::
 -- Name: index_on_posts_path; Type: INDEX; Schema: public; Owner: jahongir
 --
 
-CREATE INDEX index_on_posts_path ON public.post USING btree (path);
+CREATE INDEX index_on_root_posts_path ON public.post USING btree (root, path);
 
 --
 -- Name: index_on_posts_thread_id; Type: INDEX; Schema: public; Owner: jahongir
@@ -496,19 +514,19 @@ CREATE TRIGGER insert_vote AFTER INSERT ON public.vote FOR EACH ROW EXECUTE PROC
 
 CREATE TRIGGER update_forum_post AFTER INSERT ON public.post FOR EACH ROW EXECUTE PROCEDURE public.update_post_quantity();
 
-
 --
 -- Name: thread update_forum_thread; Type: TRIGGER; Schema: public; Owner: jahongir
 --
 
 CREATE TRIGGER update_forum_thread AFTER INSERT ON public.thread FOR EACH ROW EXECUTE PROCEDURE public.update_thread_quantity();
 
-
 --
 -- Name: vote update_vote; Type: TRIGGER; Schema: public; Owner: jahongir
 --
 
 CREATE TRIGGER update_vote AFTER UPDATE ON public.vote FOR EACH ROW EXECUTE PROCEDURE public.update_thread_votes2();
+
+CREATE INDEX index_on_threads_forum_created ON public.thread (forum, created);
 --
 -- PostgreSQL database dump complete
 --
