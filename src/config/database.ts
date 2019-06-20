@@ -7,7 +7,7 @@ class Database {
         this.pool = new Pool({
             host: 'localhost',
             port: 5432,
-            database: 'forum',
+            database: 'postgres',
             user: 'jahongir',
             password: 'Password1234',
             max: 20
@@ -21,9 +21,9 @@ class Database {
         try {
             response.data = await client.query(query);
         } catch (e) {
-            console.error(`Database error: ${query.text}`);
-            console.error(`Values: (${query.values})`);
-            console.error(`Error: ${e.message}`);
+            // console.error(`Database error: ${query.text}`);
+            // console.error(`Values: (${query.values})`);
+            // console.error(`Error: ${e.message}`);
 
             response.isError = true;
             response.code = e.code;

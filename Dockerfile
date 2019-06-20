@@ -31,7 +31,7 @@ VOLUME  ["/etc/postgresql", "/var/log/postgresql", "/var/lib/postgresql"]
 
 USER root
 WORKDIR /opt/technopark-db
-RUN npm install --only=production
-RUN npm i -g pm2
+RUN npm i --only=production
+RUN npm i -g pm2 typescript && tsc
 
-CMD service postgresql start &&  pm2 start dist/index.js -i max
+CMD service postgresql start && pm2-runtime start dist/index.js -i max

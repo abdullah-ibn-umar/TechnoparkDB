@@ -10,9 +10,11 @@ const env = process.env.NODE_ENV;
 
 if (env === 'production') {
     console.log = () => null;
-} else {
-    app.use(morgan('dev'));
 }
+
+// else {
+//     app.use(morgan('dev'));
+// }
 app.use(bodyParser.json());
 app.use('/api', router);
 
