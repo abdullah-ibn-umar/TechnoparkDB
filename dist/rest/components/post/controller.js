@@ -15,7 +15,6 @@ const model_1 = __importDefault(require("./model"));
 class PostController {
     constructor() {
         this.create = (req, res, data) => __awaiter(this, void 0, void 0, function* () {
-            // let posts: IPost[] = [];
             const posts = req.body;
             if (!posts.length) {
                 res.status(201).json([]);
@@ -33,12 +32,10 @@ class PostController {
             }
             for (let i = 0; i < posts.length; i++) {
                 const p = rq.data.rows[i];
-                // rq.data.rows.forEach((p, i) => {
                 posts[i].forum = data.forum;
                 posts[i].thread = data.threadId;
                 posts[i].created = p.created;
                 posts[i].id = p.id;
-                // });
             }
             res.status(201).json(posts);
         });

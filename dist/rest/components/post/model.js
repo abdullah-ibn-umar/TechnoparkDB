@@ -16,11 +16,6 @@ class PostModel {
     insertSeveral(posts, data) {
         return __awaiter(this, void 0, void 0, function* () {
             let values = [];
-            // const firstParent = posts[0].parent;
-            // let parentPath = '';
-            // if (!firstParent) {
-            //
-            // }
             for (let i = 0; i < posts.length; i++) {
                 const p = posts[i];
                 values.push(`('${data.forum}', 
@@ -31,12 +26,6 @@ class PostModel {
                         '${p.message}'
                     )`);
             }
-            // posts.forEach((p, i, arr) => {
-            //
-            //     if (!Object.is(arr.length - 1, i)) {
-            //         values += ',';
-            //     }
-            // });
             const query = {
                 name: '',
                 text: `
@@ -49,7 +38,6 @@ class PostModel {
             `,
                 values: []
             };
-            // console.log(query.text);
             return database_1.default.sendQuery(query);
         });
     }

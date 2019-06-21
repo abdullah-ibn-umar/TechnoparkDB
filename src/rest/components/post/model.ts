@@ -5,13 +5,7 @@ import { IQuery } from '../base/interfaces';
 
 class PostModel {
     async insertSeveral(posts: IPost[], data: IThreadData) {
-        let values = [];
-        // const firstParent = posts[0].parent;
-        // let parentPath = '';
-        // if (!firstParent) {
-        //
-        // }
-
+        let values = []
         for (let i=0; i < posts.length; i++) {
             const p = posts[i];
             values.push(`('${data.forum}', 
@@ -24,13 +18,6 @@ class PostModel {
                         '${p.message}'
                     )`);
         }
-
-        // posts.forEach((p, i, arr) => {
-        //
-        //     if (!Object.is(arr.length - 1, i)) {
-        //         values += ',';
-        //     }
-        // });
 
         const query: IQuery = {
             name: '',
@@ -45,7 +32,6 @@ class PostModel {
             values: []
         };
 
-        // console.log(query.text);
         return db.sendQuery(query);
     }
 

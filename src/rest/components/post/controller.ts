@@ -6,9 +6,7 @@ import { IThreadData } from '../thread/interface';
 
 class PostController {
     create = async (req: e.Request, res: e.Response, data: IThreadData) => {
-        // let posts: IPost[] = [];
         const posts: IPost[] = req.body;
-
         if (!posts.length) {
             res.status(201).json([]);
             return;
@@ -26,12 +24,10 @@ class PostController {
 
         for (let i=0; i < posts.length; i++) {
             const p = rq.data.rows[i];
-            // rq.data.rows.forEach((p, i) => {
-                posts[i].forum = data.forum;
-                posts[i].thread = data.threadId;
-                posts[i].created = p.created;
-                posts[i].id = p.id;
-            // });
+            posts[i].forum = data.forum;
+            posts[i].thread = data.threadId;
+            posts[i].created = p.created;
+            posts[i].id = p.id;
         }
 
         res.status(201).json(posts);
