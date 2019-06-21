@@ -34,4 +34,4 @@ WORKDIR /opt/technopark-db
 RUN ls -la
 RUN npm i --only=production
 RUN npm i -g pm2
-CMD service postgresql start && pm2-runtime start dist/index.js -i 8
+CMD service postgresql start && pm2-runtime start dist/index.js -i max

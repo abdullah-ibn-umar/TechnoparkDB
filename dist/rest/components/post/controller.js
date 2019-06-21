@@ -15,23 +15,13 @@ const model_1 = __importDefault(require("./model"));
 class PostController {
     constructor() {
         this.create = (req, res, data) => __awaiter(this, void 0, void 0, function* () {
-            let posts = [];
-            const _posts = req.body;
-            _posts.forEach((p) => {
-                const post = {
-                    author: p.author,
-                    message: p.message,
-                    forum: data.forum,
-                    parent: p.parent,
-                    thread: data.threadId
-                };
-                posts.push(post);
-            });
+            // let posts: IPost[] = [];
+            const posts = req.body;
             if (!posts.length) {
                 res.status(201).json([]);
                 return;
             }
-            const rq = yield model_1.default.insertSeveral(posts);
+            const rq = yield model_1.default.insertSeveral(posts, data);
             if (rq.isError) {
                 if (rq.message.includes('author')) {
                     res.status(404).json({ message: `Author not found` });
@@ -41,10 +31,15 @@ class PostController {
                 }
                 return;
             }
-            rq.data.rows.forEach((p, i) => {
+            for (let i = 0; i < posts.length; i++) {
+                const p = rq.data.rows[i];
+                // rq.data.rows.forEach((p, i) => {
+                posts[i].forum = data.forum;
+                posts[i].thread = data.threadId;
                 posts[i].created = p.created;
                 posts[i].id = p.id;
-            });
+                // });
+            }
             res.status(201).json(posts);
         });
         this.threadPosts = (req, res, data) => __awaiter(this, void 0, void 0, function* () {

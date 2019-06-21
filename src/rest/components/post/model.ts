@@ -1,37 +1,51 @@
 import db from '../../../config/database';
+import {IThreadData} from '../thread/interface';
 import { IPost, IPostFilter, IPostUpdate } from './interface';
 import { IQuery } from '../base/interfaces';
 
 class PostModel {
-    async insertSeveral(posts: IPost[]) {
-        let values = '';
-        posts.forEach((p, i, arr) => {
-            values += `('${p.forum}', 
-                        (SELECT nickname FROM users WHERE nickname = '${p.author}'), 
-                        ${p.thread},
+    async insertSeveral(posts: IPost[], data: IThreadData) {
+        let values = [];
+        // const firstParent = posts[0].parent;
+        // let parentPath = '';
+        // if (!firstParent) {
+        //
+        // }
+
+        for (let i=0; i < posts.length; i++) {
+            const p = posts[i];
+            values.push(`('${data.forum}', 
+                        '${p.author}', 
+                        ${data.threadId},
                         ${
-                            p.parent === undefined ?  `NULL, '{}'`: 
-                            `${p.parent}, (SELECT path FROM post WHERE pid = ${p.parent}) || ${p.parent}`
+                            p.parent === undefined ?  `NULL, '{}'`:
+                                `${p.parent}, (SELECT path FROM post WHERE pid = ${p.parent}) || ${p.parent}`
                         },
                         '${p.message}'
-                    )`;
-            if (!Object.is(arr.length - 1, i)) {
-                values += ',';
-            }
-        });
+                    )`);
+        }
+
+        // posts.forEach((p, i, arr) => {
+        //
+        //     if (!Object.is(arr.length - 1, i)) {
+        //         values += ',';
+        //     }
+        // });
 
         const query: IQuery = {
             name: '',
             text: `
                 INSERT INTO 
                     post(forum, author, thread, parent_id, path, message)
-                VALUES ${values}
+                VALUES ${values.join(',')}
                 RETURNING 
                     pid as id,
                     created
             `,
             values: []
         };
+
+        // console.log(query.text);
         return db.sendQuery(query);
     }
 

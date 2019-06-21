@@ -13,33 +13,43 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const database_1 = __importDefault(require("../../../config/database"));
 class PostModel {
-    insertSeveral(posts) {
+    insertSeveral(posts, data) {
         return __awaiter(this, void 0, void 0, function* () {
-            let values = '';
-            posts.forEach((p, i, arr) => {
-                values += `('${p.forum}', 
-                        (SELECT nickname FROM users WHERE nickname = '${p.author}'), 
-                        ${p.thread},
+            let values = [];
+            // const firstParent = posts[0].parent;
+            // let parentPath = '';
+            // if (!firstParent) {
+            //
+            // }
+            for (let i = 0; i < posts.length; i++) {
+                const p = posts[i];
+                values.push(`('${data.forum}', 
+                        '${p.author}', 
+                        ${data.threadId},
                         ${p.parent === undefined ? `NULL, '{}'` :
                     `${p.parent}, (SELECT path FROM post WHERE pid = ${p.parent}) || ${p.parent}`},
                         '${p.message}'
-                    )`;
-                if (!Object.is(arr.length - 1, i)) {
-                    values += ',';
-                }
-            });
+                    )`);
+            }
+            // posts.forEach((p, i, arr) => {
+            //
+            //     if (!Object.is(arr.length - 1, i)) {
+            //         values += ',';
+            //     }
+            // });
             const query = {
                 name: '',
                 text: `
                 INSERT INTO 
                     post(forum, author, thread, parent_id, path, message)
-                VALUES ${values}
+                VALUES ${values.join(',')}
                 RETURNING 
                     pid as id,
                     created
             `,
                 values: []
             };
+            // console.log(query.text);
             return database_1.default.sendQuery(query);
         });
     }

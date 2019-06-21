@@ -1,32 +1,20 @@
 import e from 'express';
 import model  from './model';
-import userController   from '../user/controller';
 import { IPost, IPostFilter, IPostUpdate } from './interface';
 import { IError } from '../base/interfaces';
 import { IThreadData } from '../thread/interface';
 
 class PostController {
     create = async (req: e.Request, res: e.Response, data: IThreadData) => {
-        let posts: IPost[] = [];
-        const _posts: IPost[] = req.body;
-
-        _posts.forEach((p: IPost) => {
-            const post: IPost = {
-                author: p.author,
-                message: p.message,
-                forum: data.forum,
-                parent: p.parent,
-                thread: data.threadId
-            };
-            posts.push(post);
-        });
+        // let posts: IPost[] = [];
+        const posts: IPost[] = req.body;
 
         if (!posts.length) {
             res.status(201).json([]);
             return;
         }
 
-        const rq = await model.insertSeveral(posts);
+        const rq = await model.insertSeveral(posts, data);
         if (rq.isError) {
             if (rq.message.includes('author')) {
                 res.status(404).json(<IError>{ message: `Author not found` });
@@ -36,10 +24,15 @@ class PostController {
             return;
         }
 
-        rq.data.rows.forEach((p, i) => {
-            posts[i].created = p.created;
-            posts[i].id = p.id;
-        });
+        for (let i=0; i < posts.length; i++) {
+            const p = rq.data.rows[i];
+            // rq.data.rows.forEach((p, i) => {
+                posts[i].forum = data.forum;
+                posts[i].thread = data.threadId;
+                posts[i].created = p.created;
+                posts[i].id = p.id;
+            // });
+        }
 
         res.status(201).json(posts);
     };
